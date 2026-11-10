@@ -1,0 +1,16 @@
+# Remote state settings. Copy to backend.hcl (git-ignored is fine, nothing here
+# is secret) and run:  terraform init -backend-config=backend.hcl
+#
+# The bucket and lock table are created once, by hand, before the first init -
+# see "Bootstrap" in infra/terraform/README.md. State contains generated
+# secrets, so the bucket must be private, encrypted and versioned.
+
+bucket         = "payana-terraform-state-<aws-account-id>"
+key            = "staging/terraform.tfstate"
+region         = "ap-south-1"
+encrypt        = true
+dynamodb_table = "payana-terraform-locks"
+
+# Terraform 1.10 and later can lock with a file in the bucket instead of a
+# DynamoDB table. To use that, delete the dynamodb_table line and add:
+# use_lockfile = true

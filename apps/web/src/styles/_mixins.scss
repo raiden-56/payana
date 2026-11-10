@@ -1,0 +1,53 @@
+// Sass-only helpers: breakpoints and mixins. This file emits no CSS, so
+// component stylesheets can `@use 'mixins' as *` without duplicating anything.
+// (The CSS custom properties live in _tokens.scss, loaded once from main.scss.)
+
+// Breakpoints, mobile first.
+$bp-sm: 30rem; // 480
+$bp-md: 48rem; // 768
+$bp-lg: 64rem; // 1024
+$bp-xl: 80rem; // 1280
+
+@mixin from($bp) {
+  @media (min-width: $bp) {
+    @content;
+  }
+}
+
+@mixin until($bp) {
+  @media (max-width: calc(#{$bp} - 0.02rem)) {
+    @content;
+  }
+}
+
+@mixin reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+}
+
+@mixin motion-ok {
+  @media (prefers-reduced-motion: no-preference) {
+    @content;
+  }
+}
+
+@mixin hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @content;
+    }
+  }
+}
+
+@mixin visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

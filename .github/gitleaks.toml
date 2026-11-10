@@ -1,0 +1,28 @@
+# Configuration for the CI secret scan (.github/workflows/ci.yml, job "secrets").
+# Starts from gitleaks' built-in rules and allows only values that are
+# deliberately public and say so in their own text.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Self-describing placeholders, documented demo values, and files that can only hold placeholders"
+regexTarget = "match"
+regexes = [
+  # Local-development and CI-only credentials are named as such.
+  '''(?i)dev[_-]only''',
+  '''(?i)ci[_-]only''',
+  '''(?i)example''',
+  '''(?i)placeholder''',
+  # The AWS documentation account id used in examples.
+  '''111122223333''',
+  # The RFC 6238 sample TOTP secret, used for the seeded demo staff accounts.
+  '''JBSWY3DPEHPK3PXP''',
+]
+paths = [
+  # Templates of environment files. Real .env files are git-ignored.
+  '''(^|/)\.env\.example$''',
+  # Integrity hashes, not credentials.
+  '''(^|/)package-lock\.json$''',
+  '''(^|/)\.terraform\.lock\.hcl$''',
+]

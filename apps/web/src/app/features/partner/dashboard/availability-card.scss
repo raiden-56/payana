@@ -1,0 +1,117 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.avail {
+  --lamp: var(--ink-300);
+  display: grid;
+  gap: 1.1rem;
+  align-content: start;
+  transition: background-color var(--dur-3) var(--ease-out);
+
+  &[data-status='available'] {
+    --lamp: var(--palm-500);
+    background: linear-gradient(var(--palm-50), var(--color-surface) 9rem);
+  }
+
+  &[data-status='busy'] {
+    --lamp: var(--marigold-600);
+    background: linear-gradient(var(--marigold-50), var(--color-surface) 9rem);
+  }
+}
+
+.avail__head {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.avail__lamp {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 3.4rem;
+  height: 3.4rem;
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: 50%;
+  background: var(--sand-0);
+  color: var(--lamp);
+
+  .dot {
+    width: 1.15rem;
+    height: 1.15rem;
+    transition: color var(--dur-3) var(--ease-out);
+  }
+}
+
+.avail__eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.avail__now {
+  font-size: clamp(1.6rem, 1.3rem + 1.2vw, 2.1rem);
+  font-weight: 800;
+  font-stretch: 110%;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.avail__help {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.avail__switch {
+  width: 100%;
+
+  .segmented__item {
+    flex: 1;
+    justify-content: center;
+    min-height: 2.75rem;
+  }
+}
+
+.share {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--color-border);
+}
+
+.share__toggle {
+  min-height: 2.75rem;
+}
+
+.share__state {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-700);
+
+  app-icon {
+    margin-top: 0.15rem;
+    color: var(--ink-500);
+  }
+
+  &[data-state='sharing'] app-icon {
+    color: var(--palm-600);
+  }
+
+  &[data-state='blocked'] app-icon {
+    color: var(--color-danger);
+  }
+}
+
+.share__note {
+  font-size: var(--fs-xs);
+  color: var(--color-text-subtle);
+}

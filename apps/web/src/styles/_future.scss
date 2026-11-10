@@ -1,0 +1,192 @@
+@use 'mixins' as *;
+
+// Futuristic layer: glass, light, depth. Works in both themes; strongest in
+// night mode. Every moving part stops under prefers-reduced-motion.
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+// --- glass panel ------------------------------------------------------------
+
+.glass {
+  background: color-mix(in srgb, var(--sand-0) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  border: 1px solid rgb(243 234 217 / 0.14);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.08) inset,
+    0 30px 60px -30px rgb(0 0 0 / 0.7);
+}
+
+// --- rotating light around a border -------------------------------------------
+// <div class="glow-ring"> - a marigold → laterite → palm arc circles the edge.
+
+.glow-ring {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    padding: 1.5px;
+    border-radius: inherit;
+    background: conic-gradient(
+      from var(--angle),
+      transparent 0deg,
+      var(--marigold-500) 50deg,
+      var(--laterite-500) 110deg,
+      transparent 160deg,
+      transparent 200deg,
+      var(--palm-500) 260deg,
+      transparent 320deg
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: angle-spin 6s linear infinite;
+  }
+}
+
+@keyframes angle-spin {
+  to {
+    --angle: 360deg;
+  }
+}
+
+// --- spotlight that follows the pointer (appSpotlight sets --mx / --my) ---------
+
+.spot {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(
+      26rem circle at var(--mx, 50%) var(--my, 50%),
+      rgb(242 168 29 / 0.14),
+      transparent 42%
+    );
+    transition: opacity var(--dur-3) var(--ease-out);
+  }
+
+  &:hover::after {
+    opacity: 1;
+  }
+}
+
+// --- 3D tilt (appTilt sets --rx / --ry) ----------------------------------------
+
+.tilt {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform 500ms var(--ease-out);
+
+  &.is-tilting {
+    transition: transform 80ms linear;
+  }
+}
+
+// --- glowing gradient text --------------------------------------------------------
+
+.text-glow {
+  background: linear-gradient(100deg, var(--marigold-300), var(--marigold-500) 40%, var(--coral-400) 70%, var(--marigold-300));
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-sheen 7s ease-in-out infinite;
+}
+
+@keyframes text-sheen {
+  50% {
+    background-position: 100% 0;
+  }
+}
+
+// --- reading progress line under the header (scroll-driven, where supported) ------
+
+.scroll-meter {
+  position: fixed;
+  z-index: calc(var(--z-header) + 1);
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  transform-origin: left;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, var(--laterite-500), var(--marigold-500), var(--palm-500));
+  box-shadow: 0 0 12px rgb(242 168 29 / 0.7);
+  pointer-events: none;
+}
+
+@supports (animation-timeline: scroll()) {
+  .scroll-meter {
+    animation: meter linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+@keyframes meter {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+// --- photo frames --------------------------------------------------------------------
+
+.photo-frame {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--sand-200);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 1200ms var(--ease-out);
+  }
+
+  // A warm wash so every photo sits in the same light.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 45%, rgb(14 12 9 / 0.75));
+    pointer-events: none;
+  }
+}
+
+a:hover .photo-frame img,
+.photo-frame:hover img {
+  transform: scale(1.06);
+}
+
+// --- motion-off -------------------------------------------------------------------------
+
+@include reduced-motion {
+  .glow-ring::before,
+  .text-glow {
+    animation: none;
+  }
+
+  .tilt {
+    transform: none !important;
+  }
+
+  .scroll-meter {
+    display: none;
+  }
+}

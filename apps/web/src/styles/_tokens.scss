@@ -1,0 +1,164 @@
+// Design tokens. The palette is drawn from the place - laterite stone,
+// marigold (the yellow of an auto-rickshaw), palm green, beach sand and ink.
+// There is deliberately no blue, indigo, violet or purple anywhere
+// (specs/constitution.md §4).
+
+:root {
+  color-scheme: light;
+
+  // --- sand: page and surface neutrals ---------------------------------------
+  --sand-0: #fffdf8;
+  --sand-50: #fdf8ee;
+  --sand-100: #f8efdc;
+  --sand-200: #f0e2c5;
+  --sand-300: #e3cfa6;
+  --sand-400: #cdb383;
+
+  // --- ink: text and outlines (warm near-black) ------------------------------
+  --ink-900: #1f1a14;
+  --ink-800: #2e2820;
+  --ink-700: #453c31;
+  --ink-600: #5f5548;
+  --ink-500: #7a6f60;
+  --ink-400: #9c9182;
+  --ink-300: #c2b8a8;
+
+  // --- laterite: primary brand -------------------------------------------------
+  --laterite-50: #fdefe7;
+  --laterite-100: #fadccd;
+  --laterite-300: #ec9a76;
+  --laterite-500: #d0532a;
+  --laterite-600: #b8411f;
+  --laterite-700: #95331a;
+  --laterite-800: #6f2715;
+
+  // --- marigold: accent ---------------------------------------------------------
+  --marigold-50: #fff6dc;
+  --marigold-100: #fdeab4;
+  --marigold-300: #f8cc62;
+  --marigold-500: #f2a81d;
+  --marigold-600: #d98f0c;
+  --marigold-700: #a8690a;
+
+  // --- palm: secondary, success -------------------------------------------------
+  --palm-50: #ecf5ec;
+  --palm-100: #d6ead9;
+  --palm-300: #86bf9a;
+  --palm-500: #2f7a5a;
+  --palm-600: #27624a;
+  --palm-700: #1e4a38;
+  --palm-800: #163529;
+  --palm-900: #0f261d;
+
+  // --- supporting ----------------------------------------------------------------
+  --coral-300: #f6b196;
+  --coral-400: #ef8a63;
+  --clay-500: #8a6a47;
+  --crimson-600: #a61b1b;
+  --crimson-50: #fbe9e7;
+
+  // --- semantic roles --------------------------------------------------------------
+  --color-bg: var(--sand-50);
+  --color-surface: var(--sand-0);
+  --color-surface-sunken: var(--sand-100);
+  --color-border: var(--sand-300);
+  --color-border-strong: var(--ink-900);
+  --color-text: var(--ink-900);
+  --color-text-muted: var(--ink-600);
+  --color-text-subtle: var(--ink-500);
+  --color-text-on-dark: var(--sand-50);
+  --color-primary: var(--laterite-600);
+  --color-primary-hover: var(--laterite-700);
+  --color-primary-soft: var(--laterite-50);
+  --color-accent: var(--marigold-500);
+  --color-accent-soft: var(--marigold-50);
+  --color-secondary: var(--palm-700);
+  --color-success: var(--palm-600);
+  --color-success-soft: var(--palm-50);
+  --color-warning: var(--marigold-700);
+  --color-warning-soft: var(--marigold-50);
+  --color-danger: var(--crimson-600);
+  --color-danger-soft: var(--crimson-50);
+  --color-info: var(--clay-500);
+  --color-info-soft: var(--sand-100);
+  --color-focus: var(--ink-900);
+  /** Text on marigold / laterite / crimson surfaces: always dark, in both themes. */
+  --on-accent: #1f1a14;
+  --on-primary: #fff;
+  --on-danger: #fff;
+  /** Never-swapping paper and ink for photos, overlays and art. */
+  --fx-paper: #fdf8ee;
+  --fx-ink: #14110d;
+  --glow: 242 168 29;
+
+  // --- typography -------------------------------------------------------------------
+  --font-sans: 'Anek Latin Variable', 'Anek Kannada Variable', ui-sans-serif, system-ui,
+    -apple-system, 'Segoe UI', sans-serif;
+  --font-kannada: 'Anek Kannada Variable', 'Anek Latin Variable', 'Noto Sans Kannada', sans-serif;
+
+  --fs-display: clamp(2.6rem, 1.55rem + 4.9vw, 5.4rem);
+  --fs-h1: clamp(2.1rem, 1.5rem + 2.7vw, 3.6rem);
+  --fs-h2: clamp(1.75rem, 1.35rem + 1.7vw, 2.7rem);
+  --fs-h3: clamp(1.3rem, 1.15rem + 0.6vw, 1.65rem);
+  --fs-h4: 1.2rem;
+  --fs-lg: 1.14rem;
+  --fs-md: 1.02rem;
+  --fs-sm: 0.9rem;
+  --fs-xs: 0.8rem;
+
+  --lh-tight: 1.02;
+  --lh-snug: 1.2;
+  --lh-body: 1.55;
+
+  // --- spacing (4px grid) -------------------------------------------------------------
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.25rem;
+  --s-6: 1.5rem;
+  --s-8: 2rem;
+  --s-10: 2.5rem;
+  --s-12: 3rem;
+  --s-16: 4rem;
+  --s-20: 5rem;
+  --s-24: 6rem;
+  --section-y: clamp(3.5rem, 2rem + 6vw, 7rem);
+  --gutter: clamp(1rem, 0.4rem + 3vw, 2.5rem);
+  --container: 75rem;
+  --container-narrow: 46rem;
+
+  // --- shape ----------------------------------------------------------------------------
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-xl: 34px;
+  --r-pill: 999px;
+  --stroke: 1.5px;
+
+  // --- elevation (warm-tinted, never grey-blue) -------------------------------------------
+  --shadow-xs: 0 1px 2px rgb(74 48 20 / 0.08);
+  --shadow-sm: 0 1px 2px rgb(74 48 20 / 0.08), 0 3px 8px rgb(74 48 20 / 0.06);
+  --shadow-md: 0 2px 4px rgb(74 48 20 / 0.06), 0 12px 26px -10px rgb(74 48 20 / 0.24);
+  --shadow-lg: 0 4px 8px rgb(74 48 20 / 0.06), 0 30px 56px -22px rgb(74 48 20 / 0.36);
+  --shadow-hard: 4px 4px 0 var(--ink-900);
+  --shadow-hard-sm: 2.5px 2.5px 0 var(--ink-900);
+
+  // --- motion -----------------------------------------------------------------------------
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-1: 120ms;
+  --dur-2: 220ms;
+  --dur-3: 420ms;
+  --dur-4: 720ms;
+
+  // --- layering ---------------------------------------------------------------------------
+  --z-header: 50;
+  --z-drawer: 70;
+  --z-dialog: 80;
+  --z-toast: 90;
+
+  --header-h: 4.25rem;
+}

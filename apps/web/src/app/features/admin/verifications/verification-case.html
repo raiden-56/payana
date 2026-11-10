@@ -1,0 +1,273 @@
+<a class="a-back" routerLink="/admin/verifications"><app-icon name="arrow-left" [size]="16" /> All verifications</a>
+
+@switch (vcase.status()) {
+  @case ('error') {
+    <app-state-panel [error]="vcase.error()" (retry)="vcase.load()" />
+  }
+  @case ('ready') {
+    @let c = vcase.data()!;
+    @let p = c.profile;
+
+    <header class="a-head">
+      <div>
+        <h1>{{ p.displayName }}</h1>
+        <p class="case__meta">
+          <app-status-badge kind="verification" [value]="p.verificationStatus" />
+          <span>{{ partnerLabel[p.partnerType] }}</span>
+          <span class="tabular">{{ (c.phone | phone) || 'No phone on file' }}</span>
+        </p>
+      </div>
+    </header>
+
+    <div class="a-split">
+      <div class="a-stack">
+        <!-- Documents -->
+        @for (group of groups(); track group.title + group.subtitle) {
+          <section class="a-panel" [attr.aria-label]="'Documents: ' + group.title">
+            <header>
+              <div>
+                <h2>{{ group.title }}</h2>
+                <p class="a-sub" [class.a-mono]="group.mono">{{ group.subtitle }}</p>
+              </div>
+              <span class="a-sub">{{ group.documents.length }} document{{ group.documents.length === 1 ? '' : 's' }}</span>
+            </header>
+            <div class="a-panel__body">
+              @if (group.documents.length) {
+                <div class="docs">
+                  @for (doc of group.documents; track doc.id) {
+                    <app-admin-document-card [doc]="doc" [canReview]="canReview" [busy]="busy()" (approve)="approveDocument($event)" (reject)="startReject($event)" />
+                  }
+                </div>
+              } @else {
+                <p class="a-sub">Nothing has been uploaded here yet.</p>
+              }
+            </div>
+          </section>
+        }
+
+        <!-- Vehicles -->
+        <section class="a-panel" aria-labelledby="vehicles-title">
+          <header><h2 id="vehicles-title">Vehicles</h2></header>
+          <div class="a-panel__body">
+            @if (c.vehicles.length) {
+              <ul class="vehicles">
+                @for (v of c.vehicles; track v.id) {
+                  <li>
+                    <div>
+                      <strong>{{ v.make }} {{ v.model }}</strong>
+                      <span class="a-mono">{{ v.registrationNumber }}</span>
+                      <span class="a-sub">{{ v.categoryCode | humanize }} · {{ v.seats }} seats{{ v.hasAc ? ' · AC' : '' }}{{ v.year ? ' · ' + v.year : '' }}</span>
+                    </div>
+                    <div class="a-tags">
+                      <app-status-badge kind="verification" [value]="v.verificationStatus" />
+                      <app-status-badge kind="listing" [value]="v.listingStatus" />
+                    </div>
+                    @if (canModerate) {
+                      <div class="a-row-actions">
+                        @if (v.listingStatus === 'suspended') {
+                          <button type="button" class="btn btn--outline btn--sm" (click)="moderating.set({ vehicle: v, to: 'published' })">Restore listing</button>
+                        } @else {
+                          <button type="button" class="btn btn--soft btn--sm" (click)="moderating.set({ vehicle: v, to: 'suspended' })">Take down…</button>
+                        }
+                      </div>
+                    }
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="a-sub">No vehicle has been added.</p>
+            }
+          </div>
+        </section>
+      </div>
+
+      <aside class="a-stack">
+        <!-- Decision -->
+        @if (canReview) {
+          <section class="a-panel decision" aria-labelledby="decision-title">
+            <header><h2 id="decision-title">Decision</h2></header>
+            <div class="a-panel__body">
+              @if (options().length) {
+                @if (notApproved() > 0) {
+                  <p class="notice notice--warning">
+                    <app-icon name="alert" [size]="18" />
+                    <span><strong>{{ notApproved() }}</strong> document{{ notApproved() === 1 ? ' is' : 's are' }} not approved yet.</span>
+                  </p>
+                }
+                <fieldset class="decision__options">
+                  <legend class="visually-hidden">Choose a decision</legend>
+                  @for (option of options(); track option.value) {
+                    <label class="check decision__option" [class.is-picked]="decision() === option.value">
+                      <input type="radio" name="decision" [value]="option.value" [checked]="decision() === option.value" (change)="pick(option.value)" />
+                      <span>
+                        <strong [class.a-danger]="option.danger">{{ option.label }}</strong>
+                        <small>{{ option.effect }}</small>
+                      </span>
+                    </label>
+                  }
+                </fieldset>
+
+                @if (decision()) {
+                  <div class="field">
+                    <label class="field__label" for="decision-note">
+                      Note to the partner
+                      @if (!noteRequired()) {
+                        <span class="field__optional">(optional)</span>
+                      }
+                    </label>
+                    <textarea
+                      id="decision-note"
+                      class="textarea"
+                      rows="4"
+                      maxlength="1000"
+                      [value]="decisionNote()"
+                      (input)="decisionNote.set($any($event.target).value)"
+                      [attr.aria-invalid]="noteMissing() ? 'true' : null"
+                      aria-describedby="decision-note-help"
+                    ></textarea>
+                    <p class="field__hint" id="decision-note-help" [class.field__error]="noteMissing()">
+                      {{ noteMissing() ? 'Explain the decision so the partner knows what to do.' : 'Shown to the partner and kept in the audit log.' }}
+                    </p>
+                  </div>
+                  <button type="button" class="btn btn--dark btn--block" [class.is-loading]="busy()" [disabled]="busy()" (click)="recordDecision()">
+                    Record decision
+                  </button>
+                }
+              } @else {
+                <p class="a-sub">No decision is available from this status.</p>
+              }
+            </div>
+          </section>
+        }
+
+        <!-- Profile -->
+        <section class="a-panel" aria-labelledby="profile-title">
+          <header><h2 id="profile-title">Profile</h2></header>
+          <div class="a-panel__body">
+            <dl class="kv">
+              <dt>Type</dt>
+              <dd>{{ partnerLabel[p.partnerType] }}</dd>
+              <dt>Languages</dt>
+              <dd>{{ p.languages.join(', ') || '—' }}</dd>
+              <dt>Experience</dt>
+              <dd>{{ p.yearsExperience === null ? '—' : p.yearsExperience + ' years' }}</dd>
+              <dt>Service areas</dt>
+              <dd>{{ p.serviceAreas.join(', ') || '—' }}</dd>
+              <dt>Listing</dt>
+              <dd><app-status-badge kind="listing" [value]="p.listingStatus" /></dd>
+              <dt>Joined</dt>
+              <dd>{{ p.createdAt | dateTime }}</dd>
+            </dl>
+            @if (p.bio) {
+              <p class="case__bio">{{ p.bio }}</p>
+            }
+            <ul class="checklist" aria-label="Onboarding checklist">
+              <li [class.is-done]="p.onboarding.profile"><app-icon [name]="p.onboarding.profile ? 'check' : 'minus'" [size]="15" /> Profile details</li>
+              <li [class.is-done]="p.onboarding.vehicle"><app-icon [name]="p.onboarding.vehicle ? 'check' : 'minus'" [size]="15" /> A vehicle</li>
+              <li [class.is-done]="p.onboarding.personDocuments"><app-icon [name]="p.onboarding.personDocuments ? 'check' : 'minus'" [size]="15" /> Personal documents</li>
+              <li [class.is-done]="p.onboarding.vehicleDocuments"><app-icon [name]="p.onboarding.vehicleDocuments ? 'check' : 'minus'" [size]="15" /> Vehicle documents</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- History -->
+        <section class="a-panel" aria-labelledby="history-title">
+          <header><h2 id="history-title">History</h2></header>
+          <div class="a-panel__body">
+            @if (c.history.length) {
+              <ol class="a-timeline">
+                @for (h of c.history; track $index) {
+                  <li>
+                    <strong>{{ actionLabel(h.action) }}</strong>
+                    @if (h.note) {
+                      <span>{{ h.note }}</span>
+                    }
+                    <span class="a-timeline__meta">{{ h.actor }} · <time [attr.datetime]="h.at">{{ h.at | dateTime }}</time></span>
+                  </li>
+                }
+              </ol>
+            } @else {
+              <p class="a-sub">No decisions recorded yet.</p>
+            }
+          </div>
+        </section>
+      </aside>
+    </div>
+  }
+  @default {
+    <span class="skeleton" style="height: 3rem; width: 60%; margin-bottom: 1.5rem" aria-hidden="true"></span>
+    <div class="a-skeleton-rows" aria-hidden="true">
+      @for (n of [1, 2, 3]; track n) {
+        <span class="skeleton" style="height: 9rem"></span>
+      }
+    </div>
+    <p class="visually-hidden" role="status">Loading the case…</p>
+  }
+}
+
+<!-- Reject a document -->
+<app-modal [open]="!!rejecting()" title="Reject document" (closed)="rejecting.set(null)">
+  @if (rejecting(); as doc) {
+    <div class="reject">
+      <p>
+        Reject the <strong>{{ documentLabel[doc.type] }}</strong>? The partner is notified with the reason and asked to upload a
+        new one.
+      </p>
+      <div class="field">
+        <label class="field__label" for="reject-reason">Reason</label>
+        <select
+          id="reject-reason"
+          class="select"
+          (change)="rejectReason.set($any($event.target).value)"
+          [attr.aria-invalid]="rejectTried() && !rejectReason() ? 'true' : null"
+        >
+          <option value="" [selected]="rejectReason() === ''">Choose a reason…</option>
+          @for (r of rejectionReasons; track r) {
+            <option [value]="r" [selected]="rejectReason() === r">{{ rejectionLabel[r] }}</option>
+          }
+        </select>
+        @if (rejectTried() && !rejectReason()) {
+          <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Choose why the document is rejected.</p>
+        }
+      </div>
+      <div class="field">
+        <label class="field__label" for="reject-note">
+          Note to the partner
+          @if (rejectReason() !== 'other') {
+            <span class="field__optional">(optional)</span>
+          }
+        </label>
+        <textarea id="reject-note" class="textarea" rows="3" maxlength="500" [value]="rejectNote()" (input)="rejectNote.set($any($event.target).value)"></textarea>
+        @if (rejectTried() && rejectReason() === 'other' && !rejectNote().trim()) {
+          <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Explain what is wrong with the document.</p>
+        }
+      </div>
+    </div>
+  }
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" [disabled]="busy()" (click)="rejecting.set(null)">Cancel</button>
+    <button type="button" class="btn btn--danger" [class.is-loading]="busy()" [disabled]="busy()" (click)="confirmReject()">Reject document</button>
+  </ng-container>
+</app-modal>
+
+<!-- Take down / restore a listing -->
+<app-admin-confirm
+  [open]="!!moderating()"
+  [title]="moderating()?.to === 'suspended' ? 'Take down listing' : 'Restore listing'"
+  [confirmLabel]="moderating()?.to === 'suspended' ? 'Take down' : 'Restore'"
+  [tone]="moderating()?.to === 'suspended' ? 'danger' : 'dark'"
+  [reasonLabel]="moderating()?.to === 'suspended' ? 'Reason' : ''"
+  [reasonRequired]="moderating()?.to === 'suspended'"
+  [busy]="busy()"
+  (confirmed)="moderate($event)"
+  (cancelled)="moderating.set(null)"
+>
+  @if (moderating(); as m) {
+    @if (m.to === 'suspended') {
+      Take <strong>{{ m.vehicle.make }} {{ m.vehicle.model }} ({{ m.vehicle.registrationNumber }})</strong> out of search? It stays
+      hidden until an administrator restores it.
+    } @else {
+      Put <strong>{{ m.vehicle.make }} {{ m.vehicle.model }} ({{ m.vehicle.registrationNumber }})</strong> back in search?
+    }
+  }
+</app-admin-confirm>

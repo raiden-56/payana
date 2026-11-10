@@ -1,0 +1,60 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+.rd {
+  display: grid;
+  gap: var(--s-5);
+  align-items: start;
+
+  @include from($bp-lg) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 26rem);
+  }
+}
+
+.rd__trip,
+.rd__quote {
+  display: grid;
+  gap: 1.1rem;
+  align-content: start;
+
+  h2 {
+    font-size: 1.3rem;
+  }
+}
+
+.rd__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rd__closes {
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--laterite-700);
+}
+
+.rd__decline {
+  justify-self: start;
+  min-height: 2.75rem;
+}
+
+.rd__fare {
+  font-size: clamp(2.2rem, 1.8rem + 2vw, 3rem);
+  font-weight: 800;
+  font-stretch: 110%;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+@include from($bp-lg) {
+  .rd__quote {
+    position: sticky;
+    top: 1rem;
+  }
+}

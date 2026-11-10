@@ -1,0 +1,12 @@
+// Global stylesheet. Fonts are listed in angular.json ("styles"): Anek Latin and
+// Anek Kannada, self-hosted from @fontsource so the PWA works offline and makes
+// no request to a third-party font host. Anek is designed in India by Ek Type
+// and covers Latin and Kannada in one matching design; its width axis gives
+// wide display headings and compact labels from a single family.
+
+@use 'tokens';
+@use 'base';
+@use 'layout';
+@use 'components';
+@use 'motion';
+@use 'future';

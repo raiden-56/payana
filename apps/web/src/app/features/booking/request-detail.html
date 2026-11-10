@@ -1,0 +1,256 @@
+<section class="page">
+  <div class="container">
+    <a routerLink="/bookings" class="back"><app-icon name="arrow-left" [size]="16" /> My trips</a>
+
+    @switch (request.status()) {
+      @case ('error') {
+        <app-state-panel [error]="request.error()" (retry)="request.load()">
+          <a routerLink="/request" class="btn btn--outline btn--sm">Start a new request</a>
+        </app-state-panel>
+      }
+      @case ('idle') {
+        <span class="skeleton" style="height: 20rem; border-radius: var(--r-lg)"></span>
+      }
+      @default {
+        @if (request.data(); as r) {
+          <div class="layout">
+            <!-- ===== Quotes ===== -->
+            <div class="main">
+              @switch (r.status) {
+                @case ('open') {
+                  <header class="waiting band" [class.has-quotes]="usableCount() > 0">
+                    <!-- pulses outward like a call going out to drivers -->
+                    <div class="beacon" aria-hidden="true">
+                      <span></span><span></span><span></span>
+                      <app-vehicle-art icon="auto" [moving]="true" />
+                    </div>
+                    <div>
+                      <h1>
+                        @if (usableCount() === 0) {
+                          Asking drivers…
+                        } @else {
+                          {{ usableCount() }} {{ usableCount() === 1 ? 'quote' : 'quotes' }} so far
+                        }
+                      </h1>
+                      <p class="muted" role="status" aria-live="polite">
+                        @if (r.targetDriverId) {
+                          Your request went to the driver you chose.
+                        } @else {
+                          Sent to {{ r.driversNotified }} {{ r.driversNotified === 1 ? 'driver' : 'drivers' }} who serve this trip.
+                        }
+                        @if (timeLeft()) {
+                          Open for another <strong class="tabular">{{ timeLeft() }}</strong>.
+                        }
+                      </p>
+                      @if (r.driversNotified === 0 && !r.targetDriverId) {
+                        <p class="notice notice--warning"><app-icon name="alert" [size]="18" /> <span>No driver for this vehicle type is available around your pickup right now. Try another vehicle type, or book ahead for later.</span></p>
+                      }
+                    </div>
+                  </header>
+                }
+                @case ('booked') {
+                  <header class="closed closed--ok">
+                    <app-icon name="check-circle" [size]="34" />
+                    <div>
+                      <h1>You are booked</h1>
+                      <p class="muted">You accepted a quote on this request.</p>
+                    </div>
+                    @if (r.bookingId) {
+                      <a class="btn btn--dark" [routerLink]="['/bookings', r.bookingId]">Open booking <app-icon class="btn__arrow" name="arrow-right" [size]="18" /></a>
+                    }
+                  </header>
+                }
+                @case ('expired') {
+                  <header class="closed">
+                    <app-icon name="clock" [size]="34" />
+                    <div>
+                      <h1>This request has closed</h1>
+                      <p class="muted">The time for quotes ran out before one was accepted. Nothing was booked.</p>
+                    </div>
+                    <a class="btn btn--accent" routerLink="/request">Ask again</a>
+                  </header>
+                }
+                @default {
+                  <header class="closed">
+                    <app-icon name="close" [size]="34" />
+                    <div>
+                      <h1>Request cancelled</h1>
+                      <p class="muted">You cancelled this request. Nothing was booked.</p>
+                    </div>
+                    <a class="btn btn--accent" routerLink="/request">New request</a>
+                  </header>
+                }
+              }
+
+              @if (quotes().length) {
+                <div class="quotes-bar">
+                  <h2>Quotes</h2>
+                  @if (quotes().length > 1) {
+                    <div class="segmented" role="radiogroup" aria-label="Sort quotes">
+                      <button type="button" role="radio" class="segmented__item" [attr.aria-checked]="sortBy() === 'price'" (click)="sortBy.set('price')">Price</button>
+                      <button type="button" role="radio" class="segmented__item" [attr.aria-checked]="sortBy() === 'rating'" (click)="sortBy.set('rating')">Rating</button>
+                      @if (isImmediate()) {
+                        <button type="button" role="radio" class="segmented__item" [attr.aria-checked]="sortBy() === 'eta'" (click)="sortBy.set('eta')">Soonest</button>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <ul class="quotes">
+                  @for (q of quotes(); track q.id) {
+                    <li class="quote" [class.quote--off]="!usable(q)" [class.quote--best]="q.id === lowestId()" appReveal>
+                      @if (q.id === lowestId()) {
+                        <span class="quote__flag">Lowest price</span>
+                      }
+                      <div class="quote__driver">
+                        <app-avatar [name]="q.driver.displayName" [photoUrl]="q.driver.photoUrl" [size]="52" />
+                        <div>
+                          <h3>
+                            <a [routerLink]="['/drivers', q.driver.driverId]">{{ q.driver.displayName }}</a>
+                            @if (q.driver.isVerified) {
+                              <app-icon class="verified" name="shield-check" [size]="17" label="Verified driver" />
+                            }
+                          </h3>
+                          <p class="quote__meta">
+                            <app-rating [rating]="q.driver.rating" />
+                            <span aria-hidden="true">·</span> {{ q.driver.completedTrips }} trips
+                          </p>
+                          <p class="quote__vehicle">{{ q.vehicle.make }} {{ q.vehicle.model }} · {{ q.vehicle.seats }} seats · {{ q.vehicle.hasAc ? 'AC' : 'Non-AC' }}</p>
+                        </div>
+                        <app-vehicle-art class="quote__art" [icon]="q.vehicle.icon" />
+                      </div>
+
+                      <div class="quote__terms">
+                        @if (q.inclusions.length) {
+                          <ul class="terms terms--in" aria-label="Included">
+                            @for (item of q.inclusions; track item) {
+                              <li><app-icon name="check" [size]="14" /> {{ item }}</li>
+                            }
+                          </ul>
+                        }
+                        @if (q.exclusions.length) {
+                          <ul class="terms terms--out" aria-label="Not included">
+                            @for (item of q.exclusions; track item) {
+                              <li><app-icon name="close" [size]="14" /> {{ item }}</li>
+                            }
+                          </ul>
+                        }
+                        @if (q.pickupNote) {
+                          <p class="quote__note"><app-icon name="message" [size]="15" /> “{{ q.pickupNote }}”</p>
+                        }
+                      </div>
+
+                      <div class="quote__foot">
+                        <div class="quote__price">
+                          <strong>{{ q.fare | money }}</strong>
+                          <span>
+                            @if (q.etaMinutes !== null) {
+                              arrives in ~{{ q.etaMinutes }} min ·
+                            }
+                            @if (usable(q)) {
+                              valid {{ validFor(q) }}
+                            } @else {
+                              <app-status-badge kind="quote" [value]="q.status === 'active' ? 'expired' : q.status" />
+                            }
+                          </span>
+                        </div>
+                        @if (isOpen() && usable(q)) {
+                          <button type="button" class="btn btn--accent" (click)="confirming.set(q)">Accept</button>
+                        }
+                      </div>
+                    </li>
+                  }
+                </ul>
+              } @else if (r.status === 'open') {
+                <div class="tips">
+                  <h2>While you wait</h2>
+                  <ul>
+                    <li><app-icon name="tag" [size]="18" /> Quotes arrive here as drivers reply — no need to refresh.</li>
+                    <li><app-icon name="shield-check" [size]="18" /> Every driver who can quote has been verified by our team.</li>
+                    <li><app-icon name="lock" [size]="18" /> Your phone number stays private until you accept a quote.</li>
+                  </ul>
+                </div>
+              }
+            </div>
+
+            <!-- ===== Trip summary ===== -->
+            <aside class="side ticket" aria-label="Your request">
+              <div class="ticket__main">
+                <div class="spread">
+                  <span class="summary__kind">{{ r.packageTitle || r.categoryName }}</span>
+                  <app-status-badge kind="request" [value]="r.status" />
+                </div>
+                <div class="route">
+                  <span class="route__dot"></span>
+                  <div><p class="route__label">{{ r.pickup.label }}</p><p class="route__sub">Pickup</p></div>
+                  @if (r.drop) {
+                    <span class="route__dot route__dot--drop"></span>
+                    <div><p class="route__label">{{ r.drop.label }}</p><p class="route__sub">Drop</p></div>
+                  }
+                </div>
+                <dl class="kv">
+                  <dt>When</dt>
+                  <dd>{{ r.scheduledAt ? (r.scheduledAt | dateTime) : 'As soon as possible' }}</dd>
+                  @if (r.returnAt) {
+                    <dt>Return</dt>
+                    <dd>{{ r.returnAt | dateTime }}</dd>
+                  }
+                  <dt>Vehicle</dt>
+                  <dd>{{ r.categoryName }}</dd>
+                  <dt>Travelling</dt>
+                  <dd>{{ r.passengers }} {{ r.passengers === 1 ? 'person' : 'people' }}@if (r.luggage) {, {{ r.luggage }} {{ r.luggage === 1 ? 'bag' : 'bags' }} }</dd>
+                  @if (r.notes) {
+                    <dt>Note</dt>
+                    <dd>{{ r.notes }}</dd>
+                  }
+                </dl>
+              </div>
+              <div class="ticket__stub">
+                @if (r.estimate; as est) {
+                  <p class="summary__label">Rough estimate</p>
+                  <p class="summary__price">{{ est.low | money }} – {{ est.high | money }}</p>
+                  <p class="subtle">About {{ est.distanceKm | distance }}. A guide only — the quote you accept is the price.</p>
+                }
+                @if (isOpen()) {
+                  <button type="button" class="btn btn--ghost btn--sm btn--block" (click)="confirmCancel.set(true)">Cancel this request</button>
+                }
+              </div>
+            </aside>
+          </div>
+        } @else {
+          <span class="skeleton" style="height: 20rem; border-radius: var(--r-lg)"></span>
+        }
+      }
+    }
+  </div>
+</section>
+
+<!-- Accept confirmation -->
+<app-modal title="Accept this quote?" [open]="!!confirming()" (closed)="confirming.set(null)">
+  @if (confirming(); as q) {
+    <div class="confirm">
+      <p class="confirm__price">{{ q.fare | money }}</p>
+      <p>
+        with <strong>{{ q.driver.displayName }}</strong> in a {{ q.vehicle.make }} {{ q.vehicle.model }}.
+      </p>
+      <ul class="confirm__points">
+        <li><app-icon name="check" [size]="16" /> This is the price for the trip as you described it. You pay the driver directly.</li>
+        <li><app-icon name="check" [size]="16" /> The driver gets your name and phone number so they can reach you.</li>
+        <li><app-icon name="check" [size]="16" /> Other quotes on this request are closed.</li>
+      </ul>
+    </div>
+  }
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" [disabled]="accepting()" (click)="confirming.set(null)">Not yet</button>
+    <button type="button" class="btn btn--accent" [class.is-loading]="accepting()" [disabled]="accepting()" (click)="accept()">Yes, book it</button>
+  </ng-container>
+</app-modal>
+
+<!-- Cancel confirmation -->
+<app-modal title="Cancel this request?" [open]="confirmCancel()" (closed)="confirmCancel.set(false)">
+  <p>Drivers will stop seeing it and any quotes you have received will be closed. You can always ask again.</p>
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" [disabled]="cancelling()" (click)="confirmCancel.set(false)">Keep it open</button>
+    <button type="button" class="btn btn--danger" [class.is-loading]="cancelling()" [disabled]="cancelling()" (click)="cancel()">Cancel request</button>
+  </ng-container>
+</app-modal>

@@ -1,0 +1,127 @@
+<app-partner-head heading="Ride request" back="/partner/requests" backLabel="All requests" />
+
+@if (locked()) {
+  <app-state-panel kind="info" title="Requests open once you are verified" message="When your documents are approved you can see and answer requests.">
+    <a routerLink="/partner/onboarding" class="btn btn--dark btn--sm">Check verification</a>
+  </app-state-panel>
+} @else {
+  @switch (request.status()) {
+    @case ('error') {
+      <app-state-panel [error]="request.error()" (retry)="request.load()">
+        <a routerLink="/partner/requests" class="btn btn--outline btn--sm">Back to requests</a>
+      </app-state-panel>
+    }
+    @case ('ready') {
+      @let r = item()!;
+      <div class="rd">
+        <section class="card rd__trip" aria-label="Trip details">
+          <header class="rd__head">
+            <span class="badge badge--dark"><app-icon [name]="trip()!.icon" [size]="13" /> {{ trip()!.label }}</span>
+            @if (r.directRequest) {
+              <span class="badge badge--accent"><app-icon name="heart" [size]="12" /> Asked for you</span>
+            }
+            <span class="rd__closes">closes {{ r.expiresAt | relativeTime }}</span>
+          </header>
+
+          <div class="route">
+            <span class="route__dot" aria-hidden="true"></span>
+            <div>
+              <p class="route__sub">Pickup</p>
+              <p class="route__label">{{ r.pickup.label }}</p>
+              @if (r.pickup.address) { <p class="route__sub">{{ r.pickup.address }}</p> }
+            </div>
+            @if (r.drop; as drop) {
+              <span class="route__dot route__dot--drop" aria-hidden="true"></span>
+              <div>
+                <p class="route__sub">Drop</p>
+                <p class="route__label">{{ drop.label }}</p>
+                @if (drop.address) { <p class="route__sub">{{ drop.address }}</p> }
+              </div>
+            } @else if (r.packageTitle) {
+              <span class="route__dot route__dot--drop" aria-hidden="true"></span>
+              <div>
+                <p class="route__sub">Sightseeing tour</p>
+                <p class="route__label">{{ r.packageTitle }}</p>
+              </div>
+            }
+          </div>
+
+          <dl class="kv">
+            <dt>When</dt>
+            <dd>{{ isNow() ? 'As soon as possible' : (r.scheduledAt | dateTime) }}</dd>
+            @if (r.returnAt) {
+              <dt>Return</dt>
+              <dd>{{ r.returnAt | dateTime }}</dd>
+            }
+            <dt>Vehicle wanted</dt>
+            <dd>{{ category() }}</dd>
+            <dt>Passengers</dt>
+            <dd>{{ r.passengers }}{{ r.luggage ? ' · ' + r.luggage + (r.luggage === 1 ? ' bag' : ' bags') : '' }}</dd>
+            @if (r.customerFirstName) {
+              <dt>Customer</dt>
+              <dd>{{ r.customerFirstName }}</dd>
+            }
+            @if (r.distanceToPickupKm !== null) {
+              <dt>You to pickup</dt>
+              <dd>{{ r.distanceToPickupKm | distance }}</dd>
+            }
+            @if (r.estimate; as e) {
+              <dt>Trip</dt>
+              <dd>about {{ e.distanceKm | distance }} · {{ e.durationMinutes | duration }}{{ e.basis === 'straight_line' ? ' (straight-line guess)' : '' }}</dd>
+              <dt>Estimate shown</dt>
+              <dd>{{ e.low | money }} – {{ e.high | money }}</dd>
+            }
+            <dt>Other quotes</dt>
+            <dd>{{ r.competingQuotes || 'None yet' }}</dd>
+          </dl>
+
+          @if (r.notes) {
+            <p class="notice"><app-icon name="message" [size]="18" /> <span><strong>From the customer:</strong> {{ r.notes }}</span></p>
+          }
+          <p class="subtle">The customer’s phone number is shared with you only if they accept your quote.</p>
+
+          <button type="button" class="btn btn--ghost btn--sm rd__decline" (click)="confirmDecline.set(true)">
+            <app-icon name="close" [size]="15" /> Not for me — hide this request
+          </button>
+        </section>
+
+        <section class="card card--poster rd__quote" aria-label="Your quote">
+          @if (canQuote()) {
+            <h2>Send your quote</h2>
+            <app-quote-form [request]="r" (sent)="request.load({ silent: true })" />
+          } @else {
+            @let q = r.myQuote!;
+            <div class="spread">
+              <h2>Your quote</h2>
+              <app-status-badge kind="quote" [value]="q.status" />
+            </div>
+            <p class="rd__fare tabular">{{ q.fare | money }}</p>
+            @if (quoteActive()) {
+              <p class="muted">Stands until {{ q.validUntil | dateTime }}. You will be notified the moment the customer accepts.</p>
+              <button type="button" class="btn btn--outline" [class.is-loading]="busy()" [disabled]="busy()" (click)="withdraw()">Withdraw quote</button>
+            } @else if (q.status === 'accepted') {
+              <p class="notice notice--success"><app-icon name="check-circle" [size]="18" /> <span>The customer accepted. The booking is in your trips.</span></p>
+              <a class="btn btn--dark" routerLink="/partner/bookings">Open bookings <app-icon class="btn__arrow" name="arrow-right" [size]="17" /></a>
+            } @else {
+              <p class="muted">The customer chose another driver, or the request closed.</p>
+            }
+          }
+        </section>
+      </div>
+
+      <app-modal title="Hide this request?" [open]="confirmDecline()" (closed)="confirmDecline.set(false)">
+        <p>It will be removed from your inbox and you will not be able to quote on it. The customer is not told.</p>
+        <ng-container modalActions>
+          <button type="button" class="btn btn--ghost" (click)="confirmDecline.set(false)">Keep it</button>
+          <button type="button" class="btn btn--dark" [class.is-loading]="busy()" [disabled]="busy()" (click)="decline()">Hide request</button>
+        </ng-container>
+      </app-modal>
+    }
+    @default {
+      <div class="rd" aria-hidden="true">
+        <span class="skeleton" style="height: 26rem; border-radius: var(--r-lg)"></span>
+        <span class="skeleton" style="height: 26rem; border-radius: var(--r-lg)"></span>
+      </div>
+    }
+  }
+}

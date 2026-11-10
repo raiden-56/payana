@@ -1,0 +1,35 @@
+{
+  "_readme": [
+    "Runtime configuration for the Payana web app. This file is fetched when the app starts,",
+    "so it can be edited on the server WITHOUT rebuilding the app.",
+    "",
+    "GOOGLE ANALYTICS / GOOGLE ADS: the easiest place to add your account IDs is the",
+    "admin console -> Settings -> Analytics & Ads. Values saved there win. The 'analytics'",
+    "block below is the fallback, used for any ID left empty in the admin console and",
+    "whenever the API cannot be reached. Leave an ID as an empty string to keep that",
+    "integration switched off: no Google script is requested and nothing is sent.",
+    "",
+    "None of these values is a secret. Never put passwords or API secrets in this file."
+  ],
+  "apiBaseUrl": "/api/v1",
+  "analytics": {
+    "ga4MeasurementId": "",
+    "googleAdsId": "",
+    "googleAdsConversionLabels": {
+      "customer_sign_up": "",
+      "ride_requested": "",
+      "booking_confirmed": "",
+      "driver_sign_up": "",
+      "subscription_purchased": ""
+    },
+    "adsensePublisherId": "",
+    "adsenseSlots": {
+      "home_strip": "",
+      "search_inline": "",
+      "booking_confirmation": "",
+      "package_detail": ""
+    },
+    "requireConsent": true,
+    "debugMode": false
+  }
+}

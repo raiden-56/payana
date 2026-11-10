@@ -1,0 +1,363 @@
+<section class="page" [class.page--embedded]="inPartnerArea">
+  <div [class.container]="!inPartnerArea">
+    <a [routerLink]="backLink" class="back"><app-icon name="arrow-left" [size]="16" /> {{ inPartnerArea ? 'All bookings' : 'My trips' }}</a>
+
+    @switch (booking.status()) {
+      @case ('error') {
+        <app-state-panel [error]="booking.error()" (retry)="booking.load()" />
+      }
+      @case ('idle') {
+        <span class="skeleton" style="height: 24rem; border-radius: var(--r-lg)"></span>
+      }
+      @default {
+        @if (booking.data(); as b) {
+          <div class="layout">
+            <div class="main">
+              <!-- ===== Status ===== -->
+              <header class="status band" [class.status--closed]="!isActive() && b.status !== 'completed'" [class.status--done]="b.status === 'completed'">
+                <div class="status__top">
+                  <span class="status__code tabular">{{ b.code }}</span>
+                  <app-status-badge kind="booking" [value]="b.status" />
+                </div>
+                <h1 role="status" aria-live="polite">{{ headline() }}</h1>
+                <p class="status__when"><app-icon name="calendar" [size]="16" /> {{ b.scheduledAt | dateTime }}@if (b.returnAt) { · return {{ b.returnAt | dateTime }} }</p>
+
+                @if (trackIndex() >= 0) {
+                  <!-- the vehicle travels along the line as the booking progresses -->
+                  <div class="track" [style.--at]="trackPercent() + '%'" role="img" [attr.aria-label]="'Step ' + (trackIndex() + 1) + ' of ' + track.length + ': ' + track[trackIndex()].label">
+                    <span class="track__line"></span>
+                    <span class="track__fill"></span>
+                    <app-vehicle-art class="track__car" [icon]="b.vehicle.icon" [moving]="b.status === 'driver_en_route' || b.status === 'in_progress'" />
+                    <ol>
+                      @for (t of track; track t.status; let i = $index) {
+                        <li [class.is-done]="i <= trackIndex()" [class.is-now]="i === trackIndex()">
+                          <span class="track__dot"></span>{{ t.label }}
+                        </li>
+                      }
+                    </ol>
+                  </div>
+                }
+
+                @if (b.cancellation; as c) {
+                  <p class="status__reason">
+                    Reason: {{ humanize(c.reason) }}@if (c.note) { — “{{ c.note }}” }
+                    @if (c.feeCharged.amountMinor > 0) {
+                      · Cancellation fee {{ c.feeCharged | money }}
+                    }
+                  </p>
+                }
+              </header>
+
+              <!-- ===== Driver's next step ===== -->
+              @if (driverSteps().length) {
+                <div class="next" role="group" aria-label="Update this booking">
+                  @for (s of driverSteps(); track s.action) {
+                    <button type="button" class="btn btn--lg" [class.btn--accent]="!s.confirm" [class.btn--outline]="!!s.confirm" [class.is-loading]="busy()" [disabled]="busy()" (click)="step(s.action)">
+                      <app-icon [name]="s.icon" [size]="20" /> {{ s.label }}
+                    </button>
+                  }
+                </div>
+              }
+
+              <!-- ===== The other party and the vehicle ===== -->
+              <section class="people card">
+                @if (other(); as o) {
+                  <div class="person">
+                    <app-avatar [name]="o.displayName" [photoUrl]="o.photoUrl" [size]="58" />
+                    <div class="person__who">
+                      <p class="label">{{ isDriver() ? 'Your customer' : 'Your driver' }}</p>
+                      <h2>
+                        @if (!isDriver()) {
+                          <a [routerLink]="['/drivers', o.id]">{{ o.displayName }}</a>
+                        } @else {
+                          {{ o.displayName }}
+                        }
+                      </h2>
+                      @if (o.rating) {
+                        <app-rating [rating]="o.rating" />
+                      }
+                    </div>
+                    @if (o.phone) {
+                      <a class="btn btn--dark" [href]="'tel:' + o.phone"><app-icon name="phone" [size]="18" /> Call<span class="visually-hidden"> {{ o.displayName }}</span></a>
+                    }
+                  </div>
+                  @if (o.phone) {
+                    <p class="subtle">{{ o.phone | phone }} · shared only for this booking, and only while it is active.</p>
+                  } @else if (isActive()) {
+                    <p class="subtle">The phone number is not available right now.</p>
+                  } @else {
+                    <p class="subtle">Contact details are hidden once a booking has ended. Use “Report a problem” to reach support.</p>
+                  }
+                }
+
+                <div class="car spin-wheels">
+                  <app-vehicle-art [icon]="b.vehicle.icon" />
+                  <div>
+                    <p class="label">Vehicle</p>
+                    <p><strong>{{ b.vehicle.make }} {{ b.vehicle.model }}</strong>@if (b.vehicle.color) { · {{ b.vehicle.color }} }</p>
+                    <p class="muted">{{ b.vehicle.categoryName }} · {{ b.vehicle.seats }} seats · {{ b.vehicle.hasAc ? 'AC' : 'Non-AC' }}</p>
+                  </div>
+                  <!-- drawn like the yellow commercial number plate it is -->
+                  <span class="plate" aria-label="Registration number {{ b.vehicle.registrationNumber }}"><i aria-hidden="true">IND</i>{{ b.vehicle.registrationNumber }}</span>
+                </div>
+              </section>
+
+              <!-- ===== Trip ===== -->
+              <section class="card trip">
+                <h2>Trip</h2>
+                <div class="route">
+                  <span class="route__dot"></span>
+                  <div>
+                    <p class="route__label">{{ b.pickup.label }}</p>
+                    <p class="route__sub">Pickup@if (b.pickup.address) { · {{ b.pickup.address }} }</p>
+                  </div>
+                  @if (b.drop) {
+                    <span class="route__dot route__dot--drop"></span>
+                    <div>
+                      <p class="route__label">{{ b.drop.label }}</p>
+                      <p class="route__sub">Drop@if (b.drop.address) { · {{ b.drop.address }} }</p>
+                    </div>
+                  }
+                </div>
+                @if (b.pickupNote) {
+                  <p class="notice"><app-icon name="message" [size]="18" /> <span><strong>Pickup note from the driver:</strong> {{ b.pickupNote }}</span></p>
+                }
+                <dl class="kv">
+                  @if (b.packageTitle) {
+                    <dt>Tour</dt>
+                    <dd>{{ b.packageTitle }}</dd>
+                  }
+                  <dt>Travelling</dt>
+                  <dd>{{ b.passengers }} {{ b.passengers === 1 ? 'person' : 'people' }}@if (b.luggage) {, {{ b.luggage }} {{ b.luggage === 1 ? 'bag' : 'bags' }} }</dd>
+                  @if (b.notes) {
+                    <dt>Your note</dt>
+                    <dd>{{ b.notes }}</dd>
+                  }
+                </dl>
+                @if (b.inclusions.length || b.exclusions.length) {
+                  <div class="terms-wrap">
+                    @if (b.inclusions.length) {
+                      <ul class="terms terms--in" aria-label="Included in the fare">
+                        @for (item of b.inclusions; track item) {
+                          <li><app-icon name="check" [size]="14" /> {{ item }}</li>
+                        }
+                      </ul>
+                    }
+                    @if (b.exclusions.length) {
+                      <ul class="terms terms--out" aria-label="Not included">
+                        @for (item of b.exclusions; track item) {
+                          <li><app-icon name="close" [size]="14" /> {{ item }}</li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                }
+              </section>
+
+              <!-- ===== Timeline ===== -->
+              <section class="card">
+                <h2>What has happened</h2>
+                <ol class="timeline">
+                  @for (e of b.timeline; track $index) {
+                    <li>
+                      <span class="timeline__dot"></span>
+                      <div>
+                        <strong>{{ statusText(e.status) }}</strong>
+                        <span class="subtle">{{ e.at | dateTime }} · by {{ e.actor === 'system' ? 'the system' : 'the ' + e.actor }}</span>
+                        @if (e.note) {
+                          <p class="muted">{{ e.note }}</p>
+                        }
+                      </div>
+                    </li>
+                  }
+                </ol>
+              </section>
+
+              @if (!isDriver()) {
+                <app-ad-slot [placement]="adPlacement" [regionSlug]="b.pickup.regionSlug" />
+              }
+            </div>
+
+            <!-- ===== Fare and actions ===== -->
+            <aside class="side ticket">
+              <div class="ticket__main">
+                <p class="label">Fare</p>
+                <p class="fare">{{ b.fare.quoted | money }}</p>
+                <dl class="money">
+                  <div><dt>{{ isDriver() ? 'Customer pays you' : 'Pay the driver' }}</dt><dd>{{ b.fare.quoted | money }}</dd></div>
+                  @if (b.fare.bookingFee.amountMinor > 0) {
+                    <div><dt>Booking fee</dt><dd>{{ b.fare.bookingFee | money }}</dd></div>
+                    <div class="money__total"><dt>Total</dt><dd>{{ b.fare.total | money }}</dd></div>
+                  }
+                </dl>
+                <p class="subtle">Paid directly to the driver, in cash or by UPI, when the trip ends.</p>
+              </div>
+              <div class="ticket__stub">
+                <p class="label">Cancellation</p>
+                <p class="subtle policy">{{ b.cancellationPolicy.summary }}</p>
+                <div class="actions">
+                  @if (can('review') && !b.reviewSubmitted) {
+                    <button type="button" class="btn btn--accent btn--block" (click)="dialog.set('review')"><app-icon name="star" [size]="18" /> Rate this trip</button>
+                  }
+                  @if (b.reviewSubmitted) {
+                    <p class="badge badge--success"><app-icon name="check" [size]="13" /> You reviewed this trip</p>
+                  }
+                  @if (can('view_receipt')) {
+                    <button type="button" class="btn btn--outline btn--block" (click)="openReceipt()"><app-icon name="receipt" [size]="18" /> Receipt</button>
+                  }
+                  @if (can('report_issue')) {
+                    <button type="button" class="btn btn--ghost btn--block" (click)="dialog.set('issue')"><app-icon name="flag" [size]="18" /> Report a problem</button>
+                  }
+                  @if (can('cancel')) {
+                    <button type="button" class="btn btn--ghost btn--block danger" (click)="dialog.set('cancel')"><app-icon name="close" [size]="18" /> Cancel booking</button>
+                  }
+                </div>
+              </div>
+            </aside>
+          </div>
+        } @else {
+          <span class="skeleton" style="height: 24rem; border-radius: var(--r-lg)"></span>
+        }
+      }
+    }
+  </div>
+</section>
+
+<!-- ===== Cancel ===== -->
+<app-modal title="Cancel this booking?" [open]="dialog() === 'cancel'" (closed)="dialog.set(null)">
+  @if (booking.data(); as b) {
+    <form class="stack" [formGroup]="cancelForm" id="cancel-form" (submit)="$event.preventDefault(); cancel()" novalidate>
+      @if (cancelIsFree()) {
+        <p class="notice notice--success"><app-icon name="check-circle" [size]="18" /> <span>Cancelling now is free.</span></p>
+      } @else {
+        <p class="notice notice--warning"><app-icon name="alert" [size]="18" /> <span>This is inside the late-cancellation window: a fee of <strong>{{ b.cancellationPolicy.lateFee | money }}</strong> applies.</span></p>
+      }
+      <p class="subtle">{{ b.cancellationPolicy.summary }}</p>
+      <div class="field">
+        <label class="field__label" for="cancel-reason">Why are you cancelling?</label>
+        <select id="cancel-reason" class="select" formControlName="reason" [attr.aria-invalid]="cancelForm.controls.reason.touched && cancelForm.controls.reason.invalid ? 'true' : null">
+          <option value="" disabled>Choose a reason</option>
+          @for (r of reasons(); track r) {
+            <option [value]="r">{{ humanize(r) }}</option>
+          }
+        </select>
+        @if (cancelForm.controls.reason.touched && cancelForm.controls.reason.invalid) {
+          <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Choose a reason.</p>
+        }
+      </div>
+      <div class="field">
+        <label class="field__label" for="cancel-note">Anything to add? <span class="field__optional">(optional)</span></label>
+        <textarea id="cancel-note" class="textarea" rows="2" maxlength="500" formControlName="note"></textarea>
+      </div>
+    </form>
+  }
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" [disabled]="busy()" (click)="dialog.set(null)">Keep booking</button>
+    <button type="submit" form="cancel-form" class="btn btn--danger" [class.is-loading]="busy()" [disabled]="busy()">Cancel booking</button>
+  </ng-container>
+</app-modal>
+
+<!-- ===== No-show confirmation (driver) ===== -->
+<app-modal title="Mark as a no-show?" [open]="dialog() === 'no-show'" (closed)="dialog.set(null)">
+  <p>Do this only after you have waited at the pickup point and tried to call the customer. The customer is told, and support may review it.</p>
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" [disabled]="busy()" (click)="dialog.set(null)">Keep waiting</button>
+    <button type="button" class="btn btn--danger" [class.is-loading]="busy()" [disabled]="busy()" (click)="transition('no_show')">Customer did not show</button>
+  </ng-container>
+</app-modal>
+
+<!-- ===== Review ===== -->
+<app-modal title="How was the trip?" [open]="dialog() === 'review'" (closed)="dialog.set(null)">
+  <div class="stack">
+    <div class="stars" role="radiogroup" aria-label="Rating out of 5">
+      @for (n of [1, 2, 3, 4, 5]; track n) {
+        <button type="button" role="radio" class="star" [class.is-on]="n <= stars()" [attr.aria-checked]="n === stars()" [attr.aria-label]="n + (n === 1 ? ' star' : ' stars')" (click)="stars.set(n)">
+          <app-icon name="star" [size]="38" [filled]="n <= stars()" />
+        </button>
+      }
+    </div>
+    <div class="field">
+      <label class="field__label" for="review-comment">Tell other travellers more <span class="field__optional">(optional)</span></label>
+      <textarea id="review-comment" class="textarea" rows="4" [attr.maxlength]="commentMax" [formControl]="reviewComment" placeholder="Was the driver on time? Was the vehicle clean? Would you ride with them again?"></textarea>
+      <p class="field__hint">Shown publicly with your first name and initial. {{ reviewComment.value.length }} / {{ commentMax }}</p>
+    </div>
+  </div>
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" [disabled]="busy()" (click)="dialog.set(null)">Later</button>
+    <button type="button" class="btn btn--accent" [class.is-loading]="busy()" [disabled]="busy() || stars() < 1" (click)="submitReview()">Post review</button>
+  </ng-container>
+</app-modal>
+
+<!-- ===== Report a problem ===== -->
+<app-modal title="Report a problem" [open]="dialog() === 'issue'" (closed)="dialog.set(null)">
+  <form class="stack" [formGroup]="issueForm" id="issue-form" (submit)="$event.preventDefault(); submitIssue()" novalidate>
+    <p class="notice notice--danger"><app-icon name="alert" [size]="18" /> <span>If anyone is in danger, call <strong>112</strong> first. This form reaches our support team, not the emergency services.</span></p>
+    <div class="field">
+      <label class="field__label" for="issue-cat">What is it about?</label>
+      <select id="issue-cat" class="select" formControlName="category">
+        @for (c of issueCategories; track c) {
+          <option [value]="c">{{ humanize(c) }}</option>
+        }
+      </select>
+    </div>
+    <div class="field">
+      <label class="field__label" for="issue-subject">In one line</label>
+      <input id="issue-subject" class="input" maxlength="120" formControlName="subject" [attr.aria-invalid]="issueForm.controls.subject.touched && issueForm.controls.subject.invalid ? 'true' : null" />
+      @if (issueForm.controls.subject.touched && issueForm.controls.subject.invalid) {
+        <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Give it a short title.</p>
+      }
+    </div>
+    <div class="field">
+      <label class="field__label" for="issue-body">What happened?</label>
+      <textarea id="issue-body" class="textarea" rows="5" maxlength="2000" formControlName="body" [attr.aria-invalid]="issueForm.controls.body.touched && issueForm.controls.body.invalid ? 'true' : null"></textarea>
+      @if (issueForm.controls.body.touched && issueForm.controls.body.invalid) {
+        <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Describe what happened in a sentence or two.</p>
+      }
+    </div>
+  </form>
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" [disabled]="busy()" (click)="dialog.set(null)">Close</button>
+    <button type="submit" form="issue-form" class="btn btn--dark" [class.is-loading]="busy()" [disabled]="busy()">Send to support</button>
+  </ng-container>
+</app-modal>
+
+<!-- ===== Receipt ===== -->
+<app-modal title="Receipt" [open]="dialog() === 'receipt'" (closed)="dialog.set(null)">
+  @if (receipt(); as r) {
+    <div class="receipt" id="receipt">
+      <div class="receipt__head">
+        <strong class="tabular">{{ r.bookingCode }}</strong>
+        <span class="subtle">Issued {{ r.issuedAt | dateTime }}</span>
+      </div>
+      <dl class="kv">
+        <dt>Customer</dt><dd>{{ r.customerName }}</dd>
+        <dt>Driver</dt><dd>{{ r.driverName }}</dd>
+        <dt>Vehicle</dt><dd>{{ r.vehicleLabel }} · {{ r.registrationNumber }}</dd>
+        <dt>From</dt><dd>{{ r.pickupLabel }}</dd>
+        @if (r.dropLabel) {
+          <dt>To</dt><dd>{{ r.dropLabel }}</dd>
+        }
+        @if (r.startedAt) {
+          <dt>Started</dt><dd>{{ r.startedAt | dateTime }}</dd>
+        }
+        @if (r.completedAt) {
+          <dt>Ended</dt><dd>{{ r.completedAt | dateTime }}</dd>
+        }
+      </dl>
+      <dl class="money">
+        <div><dt>Fare</dt><dd>{{ r.fare.quoted | money }}</dd></div>
+        @if (r.fare.bookingFee.amountMinor > 0) {
+          <div><dt>Booking fee</dt><dd>{{ r.fare.bookingFee | money }}</dd></div>
+        }
+        <div class="money__total"><dt>Total</dt><dd>{{ r.fare.total | money }}</dd></div>
+      </dl>
+      <p class="subtle">{{ r.paymentNote }}</p>
+    </div>
+  } @else {
+    <span class="skeleton" style="height: 14rem"></span>
+  }
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" (click)="dialog.set(null)">Close</button>
+    <button type="button" class="btn btn--dark" [disabled]="!receipt()" (click)="print()"><app-icon name="download" [size]="18" /> Print or save</button>
+  </ng-container>
+</app-modal>

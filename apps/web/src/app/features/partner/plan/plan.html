@@ -1,0 +1,179 @@
+<app-partner-head heading="Plan and billing" lead="Listing is free. A paid plan adds vehicles, more quotes each month and a better place in search." />
+
+@if (outcome(); as o) {
+  <p class="notice outcome" [class.notice--success]="o.tone === 'success'" [class.notice--warning]="o.tone === 'warning'" role="status">
+    <app-icon [name]="o.tone === 'success' ? 'check-circle' : 'info'" [size]="18" /> <span>{{ o.text }}</span>
+  </p>
+}
+
+<!-- ===== Current plan ===== -->
+@switch (subscription.status()) {
+  @case ('error') {
+    <app-state-panel [error]="subscription.error()" (retry)="subscription.load()" />
+  }
+  @case ('ready') {
+    @let sub = current()!;
+    <section class="card card--poster now" aria-labelledby="plan-now">
+      <div class="now__plan">
+        <p class="now__eyebrow">Your plan</p>
+        <h2 id="plan-now">{{ sub.plan.name }} <app-status-badge kind="subscription" [value]="sub.status" /></h2>
+        <p class="now__price">
+          @if (sub.plan.price.amountMinor > 0) {
+            <strong>{{ sub.plan.price | money }}</strong> per {{ period(sub.plan) }}
+          } @else {
+            <strong>Free</strong>
+          }
+        </p>
+        <p class="muted">
+          @if (sub.plan.price.amountMinor > 0) {
+            {{ sub.autoRenew ? 'Renews' : 'Ends' }} on {{ sub.currentPeriodEnd | dateOnly }}.
+          } @else {
+            No charge, no end date.
+          }
+        </p>
+        @if (sub.plan.price.amountMinor > 0 && sub.autoRenew && subscriptionsOn()) {
+          <button type="button" class="btn btn--ghost btn--sm now__cancel" (click)="confirmCancel.set(true)">Stop renewal</button>
+        }
+      </div>
+      <ul class="meters">
+        @for (m of meters(); track m.label) {
+          <li>
+            <div class="spread">
+              <span>{{ m.label }}</span>
+              <strong class="tabular">{{ m.used }} @if (m.limit !== null) { of {{ m.limit }} } @else { · no limit }</strong>
+            </div>
+            @if (m.limit !== null) {
+              <div class="meter" role="progressbar" [attr.aria-label]="m.label" aria-valuemin="0" [attr.aria-valuemax]="m.limit" [attr.aria-valuenow]="m.used">
+                <span [style.width.%]="percent(m)" [class.is-full]="percent(m) >= 100"></span>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  }
+  @default {
+    <span class="skeleton" style="height: 13rem; border-radius: var(--r-lg)" aria-hidden="true"></span>
+  }
+}
+
+<!-- ===== Plans ===== -->
+@if (subscriptionsOn()) {
+  <section class="block" aria-labelledby="plans-title">
+    <h2 id="plans-title">Compare plans</h2>
+    @switch (plans.status()) {
+      @case ('error') {
+        <app-state-panel [error]="plans.error()" (retry)="plans.load()" />
+      }
+      @case ('ready') {
+        <ul class="plans">
+          @for (plan of sortedPlans(); track plan.id; let i = $index) {
+            <li class="plan" [class.plan--top]="plan.isRecommended" [class.plan--current]="isCurrent(plan)" appReveal [revealDelay]="i * 70">
+              @if (plan.isRecommended) { <span class="badge badge--accent plan__flag">Most chosen</span> }
+              <h3>{{ plan.name }}</h3>
+              <p class="plan__price">
+                @if (plan.price.amountMinor > 0) {
+                  <strong>{{ plan.price | money }}</strong><span>/ {{ period(plan) }}</span>
+                } @else {
+                  <strong>Free</strong>
+                }
+              </p>
+              <p class="plan__desc">{{ plan.description }}</p>
+              <!-- The plan's own bullet points when it has them; otherwise the same facts read off its entitlements. -->
+              <ul class="plan__list">
+                @for (h of plan.highlights; track h) {
+                  <li><app-icon name="check" [size]="15" /> {{ h }}</li>
+                } @empty {
+                  <li><app-icon name="check" [size]="15" /> {{ plan.entitlements.maxVehicles }} {{ plan.entitlements.maxVehicles === 1 ? 'vehicle' : 'vehicles' }}</li>
+                  <li><app-icon name="check" [size]="15" /> {{ plan.entitlements.monthlyQuoteLimit === null ? 'Unlimited quotes' : plan.entitlements.monthlyQuoteLimit + ' quotes a month' }}</li>
+                  @if (plan.entitlements.priorityInSearch) { <li><app-icon name="check" [size]="15" /> Ranked ahead of free listings</li> }
+                  @if (plan.entitlements.featuredDaysIncluded) { <li><app-icon name="check" [size]="15" /> {{ plan.entitlements.featuredDaysIncluded }} featured days included</li> }
+                }
+                @if (plan.entitlements.badge) { <li><app-icon name="check" [size]="15" /> “{{ plan.entitlements.badge }}” badge on your listing</li> }
+              </ul>
+              @if (isCurrent(plan)) {
+                <span class="btn btn--outline plan__cta" aria-disabled="true">Your current plan</span>
+              } @else {
+                <button type="button" class="btn plan__cta" [class.btn--accent]="plan.isRecommended" [class.btn--dark]="!plan.isRecommended" (click)="choosing.set(plan)">
+                  Choose {{ plan.name }}
+                </button>
+              }
+            </li>
+          }
+        </ul>
+      }
+      @default {
+        <div class="plans" aria-hidden="true">
+          @for (n of [1, 2, 3]; track n) { <span class="skeleton" style="height: 22rem; border-radius: var(--r-lg)"></span> }
+        </div>
+      }
+    }
+  </section>
+}
+
+@if (featuredOn()) {
+  <app-featured-placements class="block" />
+}
+
+<!-- ===== Invoices ===== -->
+<section class="block" aria-labelledby="inv-title">
+  <h2 id="inv-title">Invoices</h2>
+  @switch (invoices.status()) {
+    @case ('error') {
+      <app-state-panel [error]="invoices.error()" (retry)="invoices.load()" />
+    }
+    @case ('ready') {
+      @if (invoices.data()!.items.length) {
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th scope="col">Invoice</th><th scope="col">For</th><th scope="col">Issued</th><th scope="col">Status</th><th scope="col" class="num">Amount</th></tr></thead>
+            <tbody>
+              @for (inv of invoices.data()!.items; track inv.id) {
+                <tr>
+                  <td class="tabular"><strong>{{ inv.number }}</strong></td>
+                  <td>{{ inv.description }}@if (inv.provider === 'manual') { <span class="subtle"> · settled offline</span> }</td>
+                  <td>{{ inv.issuedAt | dateOnly }}</td>
+                  <td><app-status-badge kind="invoice" [value]="inv.status" /></td>
+                  <td class="num">{{ inv.amount | money }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <app-pager [page]="invoices.data()!.page" [pageSize]="invoices.data()!.pageSize" [total]="invoices.data()!.total" (pageChange)="setInvoicePage($event)" />
+      } @else {
+        <app-state-panel kind="empty" title="No invoices yet" message="Invoices for plans and featured placements are listed here." />
+      }
+    }
+    @default {
+      <span class="skeleton" style="height: 9rem; border-radius: var(--r-md)" aria-hidden="true"></span>
+    }
+  }
+</section>
+
+<app-modal [title]="choosing() ? 'Switch to ' + choosing()!.name + '?' : 'Switch plan'" [open]="!!choosing()" (closed)="choosing.set(null)">
+  @if (choosing(); as plan) {
+    <p>
+      @if (plan.price.amountMinor > 0) {
+        <strong>{{ plan.price | money }}</strong> per {{ period(plan) }}, renewing until you stop it.
+      } @else {
+        This plan is free.
+      }
+    </p>
+    @if (plan.price.amountMinor > 0) {
+      <p class="notice"><app-icon name="info" [size]="18" /> <span>Online payment is not connected to the app yet. If the plan is activated without a charge, the page will say so plainly.</span></p>
+    }
+  }
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" (click)="choosing.set(null)">Not now</button>
+    <button type="button" class="btn btn--accent" [class.is-loading]="busy()" [disabled]="busy()" (click)="checkout()">Confirm</button>
+  </ng-container>
+</app-modal>
+
+<app-modal title="Stop renewal?" [open]="confirmCancel()" (closed)="confirmCancel.set(false)">
+  <p>Your plan stays active until the end of the current period, then your listing moves to the free plan and its limits.</p>
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" (click)="confirmCancel.set(false)">Keep renewing</button>
+    <button type="button" class="btn btn--dark" [class.is-loading]="busy()" [disabled]="busy()" (click)="cancelRenewal()">Stop renewal</button>
+  </ng-container>
+</app-modal>

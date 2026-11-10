@@ -1,0 +1,141 @@
+<section class="auth">
+  <div class="auth__form">
+    <div class="auth__card">
+      @if (!challenge()) {
+        <!-- Step 1: phone number -->
+        <header class="auth__head">
+          <span class="eyebrow">{{ asDriver() ? 'Partner sign in' : 'Sign in' }}</span>
+          <h1>{{ asDriver() ? 'Drive with ' + brand.name : 'Welcome aboard' }}</h1>
+          <p class="muted">
+            Enter your mobile number. We will text you a {{ otpLength }}-digit code — no password to remember.
+          </p>
+        </header>
+
+        <div class="segmented who" role="radiogroup" aria-label="I am signing in as">
+          <button type="button" role="radio" class="segmented__item" [attr.aria-checked]="!asDriver()" (click)="setIntent('customer')">
+            <app-icon name="user" [size]="16" /> I need a ride
+          </button>
+          <button type="button" role="radio" class="segmented__item" [attr.aria-checked]="asDriver()" (click)="setIntent('driver')">
+            <app-icon name="car" [size]="16" /> I drive
+          </button>
+        </div>
+
+        <form (submit)="$event.preventDefault(); sendCode()" novalidate>
+          <div class="field">
+            <label class="field__label" for="phone">Mobile number</label>
+            <div class="input-group">
+              <span class="input-group__addon" aria-hidden="true">+91</span>
+              <input
+                id="phone"
+                class="input"
+                type="tel"
+                inputmode="numeric"
+                autocomplete="tel-national"
+                placeholder="98765 43210"
+                maxlength="14"
+                [formControl]="phone"
+                (input)="onPhoneInput()"
+                [attr.aria-invalid]="phone.touched && phone.invalid ? 'true' : null"
+                aria-describedby="phone-help"
+              />
+            </div>
+            @if (phone.touched && phone.invalid) {
+              <p class="field__error" id="phone-help"><app-icon name="alert-circle" [size]="14" /> Enter a 10-digit Indian mobile number.</p>
+            } @else {
+              <p class="field__hint" id="phone-help">Indian numbers only for now. Standard SMS charges may apply.</p>
+            }
+          </div>
+
+          @if (problem()) {
+            <p class="notice notice--danger" role="alert">
+              <app-icon name="alert-circle" [size]="18" />
+              <span>{{ problem() }} @if (lockedFor() > 0) { Try again in {{ lockedFor() }}s. }</span>
+            </p>
+          }
+
+          <button type="submit" class="btn btn--accent btn--lg btn--block" [class.is-loading]="busy()" [disabled]="busy() || lockedFor() > 0">
+            Text me the code <app-icon class="btn__arrow" name="arrow-right" [size]="20" />
+          </button>
+        </form>
+
+        <p class="auth__legal">
+          By continuing you agree to the <a class="link" routerLink="/legal/terms">Terms of use</a> and confirm you have read the
+          <a class="link" routerLink="/legal/privacy">Privacy notice</a>.
+        </p>
+      } @else {
+        <!-- Step 2: the code -->
+        <header class="auth__head">
+          <span class="eyebrow">Check your messages</span>
+          <h1>Enter the code</h1>
+          <p class="muted">
+            We sent {{ otpLength }} digits to <strong>{{ maskedPhone() }}</strong>.
+            <button type="button" class="link" (click)="changeNumber()">Change number</button>
+          </p>
+        </header>
+
+        @if (challenge()?.devCode; as dev) {
+          <p class="notice notice--warning">
+            <app-icon name="info" [size]="18" />
+            <span>
+              <strong>Development mode.</strong> No SMS gateway is connected, so the code is shown here:
+              <strong class="tabular">{{ dev }}</strong>.
+              <button type="button" class="link" (click)="useDevCode()">Use it</button>
+            </span>
+          </p>
+        }
+
+        <form (submit)="$event.preventDefault(); verify()" novalidate>
+          <div class="field">
+            <label class="field__label" for="code">{{ otpLength }}-digit code</label>
+            <input
+              #codeInput
+              id="code"
+              class="input code"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              pattern="[0-9]*"
+              [attr.maxlength]="otpLength"
+              [formControl]="code"
+              (input)="onCodeInput()"
+              [attr.aria-invalid]="problem() ? 'true' : null"
+              aria-describedby="code-help"
+            />
+            <p class="field__hint" id="code-help">The code is valid for {{ (challenge()!.expiresInSeconds / 60).toFixed(0) }} minutes.</p>
+          </div>
+
+          @if (problem()) {
+            <p class="notice notice--danger" role="alert">
+              <app-icon name="alert-circle" [size]="18" /> <span>{{ problem() }}</span>
+            </p>
+          }
+
+          <button type="submit" class="btn btn--accent btn--lg btn--block" [class.is-loading]="busy()" [disabled]="busy()">
+            Verify and continue
+          </button>
+        </form>
+
+        <p class="auth__resend" aria-live="polite">
+          @if (resendIn() > 0) {
+            Did not get it? You can ask again in <span class="tabular">{{ resendIn() }}s</span>.
+          } @else {
+            Did not get it? <button type="button" class="link" [disabled]="busy()" (click)="sendCode()">Send a new code</button>
+          }
+        </p>
+      }
+    </div>
+  </div>
+
+  <aside class="auth__art band" aria-hidden="true">
+    <app-photo class="auth__photo" key="auto-stand" [decorative]="true" />
+    <span class="auth__sun"></span>
+    <app-vehicle-art [icon]="asDriver() ? 'auto' : 'sedan'" [moving]="true" />
+    <p>
+      @if (asDriver()) {
+        Your vehicle, your rates, your customers.
+      } @else {
+        Verified local drivers. Quotes you can compare.
+      }
+    </p>
+  </aside>
+</section>

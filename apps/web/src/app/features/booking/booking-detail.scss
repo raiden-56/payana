@@ -1,0 +1,472 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+// Inside the partner console the shell already provides the page padding.
+.page--embedded {
+  padding-block: 0;
+  min-height: 0;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: var(--s-4);
+  font-weight: 650;
+  color: var(--ink-700);
+
+  &:hover {
+    color: var(--laterite-600);
+  }
+}
+
+.layout {
+  display: grid;
+  gap: var(--s-6);
+  align-items: start;
+
+  @include from($bp-lg) {
+    grid-template-columns: minmax(0, 1fr) 21rem;
+    gap: var(--s-8);
+  }
+}
+
+.main {
+  display: grid;
+  gap: var(--s-5);
+  min-width: 0;
+}
+
+.card {
+  display: grid;
+  gap: var(--s-4);
+
+  h2 {
+    font-size: 1.2rem;
+  }
+}
+
+.label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+// ===== Status header ============================================================
+
+.status {
+  display: grid;
+  gap: 0.6rem;
+  padding: clamp(1.25rem, 1rem + 1.5vw, 2rem);
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: var(--r-xl);
+  background: var(--palm-800);
+  color: var(--sand-50);
+  box-shadow: var(--shadow-hard);
+  animation: rise-in var(--dur-4) var(--ease-out) both;
+
+  h1 {
+    font-size: var(--fs-h2);
+  }
+
+  &--closed {
+    background: var(--ink-800);
+  }
+
+  &--done {
+    background: var(--palm-700);
+  }
+}
+
+.status__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.status__code {
+  padding: 0.1rem 0.7rem;
+  border: 1.5px dashed rgb(253 248 238 / 0.5);
+  border-radius: var(--r-xs);
+  font-weight: 750;
+  letter-spacing: 0.12em;
+}
+
+.status__when,
+.status__reason {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--sand-200);
+}
+
+.status__reason {
+  font-size: var(--fs-sm);
+}
+
+// The progress track: a line, a filled part, and the vehicle riding the join.
+.track {
+  position: relative;
+  margin-top: 2.6rem;
+  padding-top: 0.2rem;
+
+  ol {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    margin-top: 0.9rem;
+    font-size: var(--fs-xs);
+    font-weight: 650;
+    color: rgb(253 248 238 / 0.55);
+  }
+
+  li {
+    position: relative;
+    text-align: center;
+
+    &:first-child {
+      text-align: left;
+    }
+    &:last-child {
+      text-align: right;
+    }
+
+    &.is-done {
+      color: var(--sand-50);
+    }
+    &.is-now {
+      color: var(--marigold-300);
+    }
+  }
+}
+
+.track__line,
+.track__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 4px;
+}
+
+.track__line {
+  right: 0;
+  background: rgb(253 248 238 / 0.22);
+}
+
+.track__fill {
+  width: var(--at);
+  background: var(--marigold-500);
+  color: var(--on-accent);
+  transition: width 900ms var(--ease-out);
+}
+
+.track__car {
+  position: absolute;
+  top: -2.35rem;
+  left: clamp(0%, calc(var(--at) - 1.9rem), calc(100% - 3.8rem));
+  width: 3.8rem;
+  transition: left 900ms var(--ease-out);
+  --glass: var(--marigold-100);
+}
+
+.track__dot {
+  display: none;
+}
+
+// ===== Driver's next step =========================================================
+
+.next {
+  display: grid;
+  gap: var(--s-3);
+
+  @include from($bp-sm) {
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  }
+}
+
+// ===== People ====================================================================
+
+.person {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.9rem;
+  align-items: center;
+
+  @include from($bp-sm) {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  h2 {
+    font-size: 1.35rem;
+
+    a:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+  }
+
+  .btn {
+    grid-column: 1 / -1;
+
+    @include from($bp-sm) {
+      grid-column: auto;
+    }
+  }
+}
+
+.car {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.6rem 1rem;
+  align-items: center;
+  padding-top: var(--s-4);
+  border-top: 1px dashed var(--color-border);
+
+  @include from($bp-sm) {
+    grid-template-columns: 6.5rem 1fr auto;
+  }
+}
+
+// An Indian commercial number plate: black characters on yellow.
+.plate {
+  grid-column: 1 / -1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.8rem 0.3rem 0.35rem;
+  border: 2.5px solid var(--ink-900);
+  border-radius: 7px;
+  background: var(--marigold-500);
+  font-size: 1.2rem;
+  font-weight: 800;
+  font-stretch: 112%;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+
+  @include from($bp-sm) {
+    grid-column: auto;
+  }
+
+  i {
+    padding: 0.25rem 0.2rem;
+    border-radius: 3px;
+    background: var(--ink-900);
+    color: var(--marigold-300);
+    font-size: 0.5rem;
+    font-style: normal;
+    letter-spacing: 0.06em;
+    writing-mode: vertical-rl;
+    rotate: 180deg;
+  }
+}
+
+// ===== Trip ======================================================================
+
+.terms-wrap {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.15rem 0.65rem;
+    border-radius: var(--r-pill);
+    font-size: var(--fs-xs);
+    font-weight: 650;
+  }
+
+  &--in li {
+    background: var(--palm-100);
+    color: var(--palm-800);
+  }
+
+  &--out li {
+    background: var(--sand-200);
+    color: var(--ink-700);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-400);
+  }
+}
+
+// ===== Timeline ==================================================================
+
+.timeline {
+  display: grid;
+
+  li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.25rem 1fr;
+    gap: 0.9rem;
+    padding-bottom: 1.1rem;
+
+    // The stem joining one event to the next.
+    &:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: calc(0.625rem - 1px);
+      top: 1.1rem;
+      bottom: 0;
+      border-left: 2px solid var(--sand-300);
+    }
+
+    &:last-child {
+      padding-bottom: 0;
+
+      .timeline__dot {
+        background: var(--laterite-600);
+  color: var(--on-accent);
+        box-shadow: 0 0 0 4px var(--laterite-100);
+      }
+    }
+
+    div {
+      display: grid;
+      line-height: 1.35;
+    }
+  }
+}
+
+.timeline__dot {
+  width: 0.8rem;
+  height: 0.8rem;
+  margin: 0.3rem 0 0 0.22rem;
+  border-radius: 50%;
+  background: var(--palm-500);
+}
+
+// ===== Fare ticket ===============================================================
+
+.side {
+  @include from($bp-lg) {
+    position: sticky;
+    top: 1.25rem;
+  }
+
+  .ticket__main,
+  .ticket__stub {
+    display: grid;
+    gap: 0.6rem;
+  }
+}
+
+:host-context(app-site-layout) .side {
+  @include from($bp-lg) {
+    top: calc(var(--header-h) + 1.25rem);
+  }
+}
+
+.fare {
+  font-size: 2.6rem;
+  font-weight: 800;
+  font-stretch: 110%;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.money {
+  display: grid;
+
+  > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.4rem 0;
+    font-size: var(--fs-sm);
+    border-bottom: 1px dashed var(--color-border);
+  }
+
+  dd {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.money__total {
+  font-size: var(--fs-md) !important;
+  font-weight: 750;
+  border-bottom: 0 !important;
+}
+
+.policy {
+  margin-top: -0.3rem;
+}
+
+.actions {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+
+  .badge {
+    justify-self: start;
+  }
+}
+
+.danger {
+  color: var(--crimson-600);
+}
+
+// ===== Dialog bits ================================================================
+
+.stars {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+}
+
+.star {
+  padding: 0.2rem;
+  border-radius: 50%;
+  color: var(--sand-300);
+  transition:
+    transform var(--dur-2) var(--ease-spring),
+    color var(--dur-2);
+
+  app-icon {
+    stroke: var(--ink-900);
+  }
+
+  &:hover {
+    transform: scale(1.15) rotate(-6deg);
+  }
+
+  &.is-on {
+    color: var(--marigold-500);
+    animation: pop-in var(--dur-3) var(--ease-spring);
+  }
+}
+
+.receipt {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.receipt__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 2px dashed var(--ink-300);
+
+  strong {
+    font-size: 1.3rem;
+    letter-spacing: 0.08em;
+  }
+}

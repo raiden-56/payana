@@ -1,0 +1,33 @@
+name: Set up Node and contracts
+description: >
+  Installs Node.js with npm caching and builds packages/contracts. Both apps
+  depend on that package through a file: link, so its dist/ must exist before
+  either of them is installed, linted, built or tested.
+
+inputs:
+  lockfile:
+    description: Lockfile of the package this job works on, used in the npm cache key.
+    required: false
+    default: packages/contracts/package-lock.json
+  node-version:
+    description: Node.js version.
+    required: false
+    default: "24"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: |
+          packages/contracts/package-lock.json
+          ${{ inputs.lockfile }}
+
+    - name: Build @payana/contracts
+      shell: bash
+      working-directory: packages/contracts
+      run: |
+        npm ci
+        npm run build

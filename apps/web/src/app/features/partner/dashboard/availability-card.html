@@ -1,0 +1,94 @@
+<section class="card card--poster avail" [attr.data-status]="status()" aria-labelledby="avail-title">
+  <header class="avail__head">
+    <span class="avail__lamp" aria-hidden="true"><span class="dot" [class.dot--live]="status() === 'available'"></span></span>
+    <div>
+      <p class="avail__eyebrow" id="avail-title">Your status</p>
+      <p class="avail__now" aria-live="polite">{{ current().label }}</p>
+      <p class="avail__help">{{ current().help }}</p>
+    </div>
+  </header>
+
+  <div class="segmented avail__switch" role="radiogroup" aria-label="Set your status">
+    @for (choice of choices; track choice.value) {
+      <button
+        type="button"
+        role="radio"
+        class="segmented__item"
+        [attr.aria-checked]="status() === choice.value"
+        [disabled]="busy()"
+        (click)="choose(choice.value)"
+      >
+        {{ choice.label }}
+      </button>
+    }
+  </div>
+
+  <div class="field">
+    <label class="field__label" for="avail-vehicle">Vehicle you are driving</label>
+    @if (vehicles().length) {
+      <select id="avail-vehicle" class="select" [value]="vehicleId()" [disabled]="busy()" (change)="onVehicleChange($event)">
+        @for (v of vehicles(); track v.id) {
+          <option [value]="v.id" [selected]="v.id === vehicleId()">{{ v.label }}{{ v.ownerName ? ' — owner: ' + v.ownerName : '' }}</option>
+        }
+      </select>
+    } @else {
+      <p class="notice">
+        <app-icon name="info" [size]="18" />
+        <span>
+          No vehicle yet. <a class="link" routerLink="/partner/vehicles">Add your vehicle</a>, or ask its owner to authorise you on the
+          <a class="link" routerLink="/partner/team">Team</a> page.
+        </span>
+      </p>
+    }
+  </div>
+
+  @if (problem(); as p) {
+    <p class="notice notice--danger" role="alert">
+      <app-icon name="alert-circle" [size]="18" />
+      <span>
+        {{ p.text }}
+        @if (p.link; as link) {
+          <a class="link" [routerLink]="link.to">{{ link.label }}</a>
+        }
+      </span>
+    </p>
+  }
+
+  <div class="share">
+    <label class="switch share__toggle">
+      <input type="checkbox" role="switch" [checked]="sharing.enabled()" (change)="onSharingToggle($event)" />
+      <span></span>
+      Share my location while available
+    </label>
+
+    <p class="share__state" [attr.data-state]="sharing.state()" aria-live="polite">
+      <app-icon [name]="sharing.state() === 'sharing' ? 'locate' : sharing.state() === 'blocked' ? 'alert-circle' : 'pin'" [size]="16" />
+      <span>
+        {{ sharingText() }}
+        @if (sharing.state() === 'sharing' && sharing.lastSentAt(); as sent) {
+          · sent {{ sent | relativeTime }}
+          @if (sharing.accuracyMeters(); as accuracy) {
+            · within about {{ accuracy }} m
+          }
+        }
+      </span>
+    </p>
+
+    @if (sharing.problem()) {
+      <p class="notice notice--warning" role="alert">
+        <app-icon name="alert" [size]="18" />
+        <span>
+          {{ sharing.problem() }}
+          @if (sharing.state() === 'blocked') {
+            <button type="button" class="link" (click)="sharing.retry()">Try again</button>
+          }
+        </span>
+      </p>
+    }
+
+    <p class="share__note">
+      This is a web app: your position is sent only while it is open and on screen (about every {{ pingSeconds }} seconds). If you lock
+      the phone or switch apps, updates stop and customers are told your location is not current.
+    </p>
+  </div>
+</section>

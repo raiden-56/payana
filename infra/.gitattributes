@@ -1,0 +1,6 @@
+# Files embedded into task definitions and CloudFront functions must keep
+# Unix line endings on every checkout, including Windows.
+*.sh  text eol=lf
+*.js  text eol=lf
+*.tf  text eol=lf
+*.hcl text eol=lf

@@ -1,0 +1,290 @@
+<section class="page">
+  <div class="container layout">
+    <!-- ===== Side navigation ===== -->
+    <aside class="nav">
+      <div class="nav__me">
+        <app-avatar [name]="auth.displayName()" [size]="64" />
+        <div>
+          <strong>{{ auth.displayName() }}</strong>
+          @if (auth.me()?.phone; as phone) {
+            <span class="tabular">{{ phone | phone }}</span>
+          }
+        </div>
+      </div>
+      <nav aria-label="Account sections">
+        <a routerLink="." fragment="profile"><app-icon name="user" [size]="18" /> Profile</a>
+        <a routerLink="." fragment="places"><app-icon name="pin" [size]="18" /> Saved places</a>
+        <a routerLink="." fragment="emergency"><app-icon name="phone" [size]="18" /> Emergency contact</a>
+        <a routerLink="." fragment="privacy"><app-icon name="lock" [size]="18" /> Privacy</a>
+        <a routerLink="." fragment="devices"><app-icon name="key" [size]="18" /> Signed-in devices</a>
+        <a routerLink="/account/notifications"><app-icon name="bell" [size]="18" /> Notifications</a>
+        <a routerLink="/help"><app-icon name="help" [size]="18" /> Help &amp; support</a>
+      </nav>
+      <button type="button" class="btn btn--outline btn--block" (click)="signOut()"><app-icon name="logout" [size]="18" /> Sign out</button>
+    </aside>
+
+    <div class="main">
+      <header class="page-head">
+        <span class="eyebrow">Account &amp; privacy</span>
+        <h1>Your details, your choices.</h1>
+      </header>
+
+      <!-- ===== Profile ===== -->
+      <section class="panel" id="profile" aria-labelledby="h-profile">
+        <header class="panel__head"><h2 id="h-profile">Profile</h2></header>
+        <form class="panel__body" [formGroup]="profile" (submit)="$event.preventDefault(); saveProfile()" novalidate>
+          <div class="form-grid">
+            <div class="field">
+              <label class="field__label" for="name">Your name</label>
+              <input id="name" class="input" autocomplete="name" formControlName="displayName" [attr.aria-invalid]="bad(profile.controls.displayName)" />
+              @if (bad(profile.controls.displayName)) {
+                <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Enter the name drivers should call you by.</p>
+              } @else {
+                <p class="field__hint">Shown to your driver once you book. Reviews show only your first name and initial.</p>
+              }
+            </div>
+            <div class="field">
+              <label class="field__label" for="email">E-mail <span class="field__optional">(optional)</span></label>
+              <input id="email" class="input" type="email" autocomplete="email" formControlName="email" [attr.aria-invalid]="bad(profile.controls.email)" />
+              @if (bad(profile.controls.email)) {
+                <p class="field__error"><app-icon name="alert-circle" [size]="14" /> That does not look like an e-mail address.</p>
+              } @else {
+                <p class="field__hint">For receipts. Never shown to drivers.</p>
+              }
+            </div>
+            <div class="field">
+              <label class="field__label" for="locale">Language</label>
+              <select id="locale" class="select" formControlName="locale">
+                @for (l of locales; track l.value) {
+                  <option [value]="l.value">{{ l.label }}</option>
+                }
+              </select>
+              <p class="field__hint">Used for messages we send you. The site itself is in English for now.</p>
+            </div>
+            <div class="field">
+              <span class="field__label">Mobile number</span>
+              <p class="readonly tabular">{{ (auth.me()?.phone | phone) || '—' }}</p>
+              <p class="field__hint">This is how you sign in. To change it, contact support.</p>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--dark" [class.is-loading]="savingProfile()" [disabled]="savingProfile() || profile.pristine">Save profile</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ===== Saved places ===== -->
+      <section class="panel" id="places" aria-labelledby="h-places">
+        <header class="panel__head">
+          <h2 id="h-places">Saved places</h2>
+          <span class="subtle">{{ places.data()?.length ?? 0 }} of {{ maxPlaces }}</span>
+        </header>
+        <div class="panel__body stack">
+          @switch (places.status()) {
+            @case ('error') {
+              <app-state-panel [error]="places.error()" (retry)="places.load()" />
+            }
+            @case ('ready') {
+              @if (places.data()!.length) {
+                <ul class="rows">
+                  @for (p of places.data(); track p.id) {
+                    <li>
+                      <span class="rows__icon"><app-icon name="pin" [size]="18" /></span>
+                      <div>
+                        <strong>{{ p.label }}</strong>
+                        <span>{{ p.address || 'Pinned location' }}</span>
+                      </div>
+                      <button type="button" class="btn btn--ghost btn--icon" (click)="removePlace(p)" [attr.aria-label]="'Remove ' + p.label"><app-icon name="trash" [size]="18" /></button>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="muted">Nothing saved yet. Save your hotel or homestay to pick it in one tap next time.</p>
+              }
+            }
+            @default {
+              <span class="skeleton" style="height: 4rem"></span>
+            }
+          }
+
+          @if (!placesFull()) {
+            <div class="add-place">
+              <app-location-picker label="Add a place" placeholder="Search a place or use your location" [(value)]="newPlace" />
+              @if (newPlace()) {
+                <div class="form-grid">
+                  <div class="field">
+                    <label class="field__label" for="place-label">Call it <span class="field__optional">(optional)</span></label>
+                    <input id="place-label" class="input" maxlength="40" [formControl]="newPlaceLabel" [placeholder]="newPlace()!.label" />
+                  </div>
+                  <div class="field">
+                    <label class="field__label" for="place-kind">Kind</label>
+                    <select id="place-kind" class="select" [formControl]="newPlaceKind">
+                      @for (k of placeKinds; track k.value) {
+                        <option [value]="k.value">{{ k.label }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button type="button" class="btn btn--dark" [class.is-loading]="addingPlace()" [disabled]="addingPlace()" (click)="addPlace()">Save place</button>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="notice"><app-icon name="info" [size]="18" /> <span>You have saved the maximum of {{ maxPlaces }} places. Remove one to add another.</span></p>
+          }
+        </div>
+      </section>
+
+      <!-- ===== Emergency contact ===== -->
+      <section class="panel" id="emergency" aria-labelledby="h-emergency">
+        <header class="panel__head"><h2 id="h-emergency">Emergency contact</h2></header>
+        <form class="panel__body" [formGroup]="contactForm" (submit)="$event.preventDefault(); saveContact()" novalidate>
+          <p class="muted lead">Someone our support team may call if there is a safety concern on one of your trips. They are not contacted for anything else, and drivers never see this.</p>
+          @if (contact.status() === 'error') {
+            <app-state-panel [error]="contact.error()" (retry)="contact.load()" />
+          } @else {
+            <div class="form-grid">
+              <div class="field">
+                <label class="field__label" for="ec-name">Their name</label>
+                <input id="ec-name" class="input" formControlName="name" autocomplete="off" [attr.aria-invalid]="bad(contactForm.controls.name)" />
+                @if (bad(contactForm.controls.name)) {
+                  <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Enter a name.</p>
+                }
+              </div>
+              <div class="field">
+                <label class="field__label" for="ec-phone">Their mobile number</label>
+                <div class="input-group">
+                  <span class="input-group__addon" aria-hidden="true">+91</span>
+                  <input id="ec-phone" class="input" type="tel" inputmode="numeric" maxlength="10" formControlName="phone" autocomplete="off" [attr.aria-invalid]="bad(contactForm.controls.phone)" />
+                </div>
+                @if (bad(contactForm.controls.phone)) {
+                  <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Enter a 10-digit Indian mobile number.</p>
+                }
+              </div>
+              <div class="field">
+                <label class="field__label" for="ec-rel">Relationship <span class="field__optional">(optional)</span></label>
+                <input id="ec-rel" class="input" formControlName="relationship" placeholder="e.g. Sister" maxlength="40" />
+              </div>
+            </div>
+            <div class="form-actions">
+              @if (contact.data()) {
+                <button type="button" class="btn btn--ghost" [disabled]="savingContact()" (click)="removeContact()">Remove</button>
+              }
+              <button type="submit" class="btn btn--dark" [class.is-loading]="savingContact()" [disabled]="savingContact() || contactForm.pristine">Save contact</button>
+            </div>
+          }
+        </form>
+      </section>
+
+      <!-- ===== Privacy ===== -->
+      <section class="panel" id="privacy" aria-labelledby="h-privacy">
+        <header class="panel__head">
+          <h2 id="h-privacy">Privacy</h2>
+          <a class="link" routerLink="/legal/privacy">Privacy notice</a>
+        </header>
+        <div class="panel__body">
+          @switch (consents.status()) {
+            @case ('error') {
+              <app-state-panel [error]="consents.error()" (retry)="consents.load()" />
+            }
+            @case ('ready') {
+              @let c = consents.data()!;
+              <label class="switch-row">
+                <span><strong>Analytics</strong><span>Let us count visits with Google Analytics to improve the product. No names or phone numbers are sent.</span></span>
+                <span class="switch"><input type="checkbox" role="switch" [checked]="c.analytics" [disabled]="savingConsents()" (change)="setConsent('analytics', $any($event.target).checked)" /><span></span></span>
+              </label>
+              <label class="switch-row">
+                <span><strong>Advertising</strong><span>Let us measure our Google adverts and show relevant ones.</span></span>
+                <span class="switch"><input type="checkbox" role="switch" [checked]="c.advertising" [disabled]="savingConsents()" (change)="setConsent('advertising', $any($event.target).checked)" /><span></span></span>
+              </label>
+              <label class="switch-row">
+                <span><strong>Offers and news</strong><span>Occasional messages by SMS, WhatsApp or e-mail. Messages about your bookings are always sent.</span></span>
+                <span class="switch"><input type="checkbox" role="switch" [checked]="c.marketingMessages" [disabled]="savingConsents()" (change)="setConsent('marketingMessages', $any($event.target).checked)" /><span></span></span>
+              </label>
+              @if (c.updatedAt) {
+                <p class="subtle stamp">Last changed {{ c.updatedAt | relativeTime }}. You can change your mind at any time.</p>
+              }
+            }
+            @default {
+              <span class="skeleton" style="height: 9rem"></span>
+            }
+          }
+
+          <div class="danger-zone">
+            <h3>Delete my account</h3>
+            @if (deletion.data()?.requested) {
+              <p class="notice notice--warning">
+                <app-icon name="alert" [size]="18" />
+                <span>
+                  Your account is scheduled to be erased on <strong>{{ deletion.data()!.scheduledFor | dateOnly }}</strong>.
+                  Until then you can keep using it, or cancel the deletion.
+                </span>
+              </p>
+              <button type="button" class="btn btn--dark" [class.is-loading]="deleteBusy()" [disabled]="deleteBusy()" (click)="cancelDeletion()">Keep my account</button>
+            } @else {
+              <p class="muted">
+                Erases your profile, saved places and contact details after a {{ graceDays }}-day cooling-off period. Records of
+                completed bookings are kept without your personal details, as the law and our accounts require.
+              </p>
+              <button type="button" class="btn btn--outline danger" (click)="deleteOpen.set(true)">Delete my account…</button>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Devices ===== -->
+      <section class="panel" id="devices" aria-labelledby="h-devices">
+        <header class="panel__head"><h2 id="h-devices">Signed-in devices</h2></header>
+        <div class="panel__body">
+          @switch (sessions.status()) {
+            @case ('error') {
+              <app-state-panel [error]="sessions.error()" (retry)="sessions.load()" />
+            }
+            @case ('ready') {
+              <ul class="rows">
+                @for (s of sessions.data(); track s.id) {
+                  <li>
+                    <span class="rows__icon"><app-icon name="key" [size]="18" /></span>
+                    <div>
+                      <strong>{{ s.deviceLabel || 'Unknown device' }} @if (s.current) { <span class="badge badge--success">This device</span> }</strong>
+                      <span>Signed in {{ s.createdAt | relativeTime }} · last used {{ s.lastUsedAt | relativeTime }}</span>
+                    </div>
+                    @if (!s.current) {
+                      <button type="button" class="btn btn--outline btn--sm" [class.is-loading]="revoking() === s.id" [disabled]="revoking() !== null" (click)="revoke(s.id)">Sign out</button>
+                    }
+                  </li>
+                }
+              </ul>
+              <p class="subtle stamp">See a device you do not recognise? Sign it out, then contact support.</p>
+            }
+            @default {
+              <span class="skeleton" style="height: 5rem"></span>
+            }
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
+
+<app-modal title="Delete your account?" [open]="deleteOpen()" (closed)="deleteOpen.set(false)">
+  <div class="stack">
+    <p>
+      Your account will be erased in <strong>{{ graceDays }} days</strong>. You can cancel any time before then by signing in.
+      After that it cannot be undone, and you would need to sign up again to use {{ brand }}.
+    </p>
+    <ul class="bullets">
+      <li>Active bookings should be completed or cancelled first.</li>
+      <li>Your reviews stay published under “a former customer”.</li>
+    </ul>
+    <div class="field">
+      <label class="field__label" for="del-reason">Why are you leaving? <span class="field__optional">(optional — it helps us)</span></label>
+      <textarea id="del-reason" class="textarea" rows="3" maxlength="300" [formControl]="deleteReason"></textarea>
+    </div>
+  </div>
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" [disabled]="deleteBusy()" (click)="deleteOpen.set(false)">Keep my account</button>
+    <button type="button" class="btn btn--danger" [class.is-loading]="deleteBusy()" [disabled]="deleteBusy()" (click)="requestDeletion()">Schedule deletion</button>
+  </ng-container>
+</app-modal>

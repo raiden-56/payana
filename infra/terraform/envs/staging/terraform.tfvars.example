@@ -1,0 +1,41 @@
+# Copy to terraform.tfvars and fill in. This file holds NO secrets: database,
+# cache, token-signing and encryption secrets are generated and kept in AWS
+# Secrets Manager. (*.tfvars is git-ignored; only this example is tracked.)
+
+aws_region = "ap-south-1"
+
+# --- Required ---------------------------------------------------------------------
+
+# Host name CloudFront uses to reach the load balancer. After the first apply,
+# create a CNAME (or Route 53 alias) from it to the `alb_dns_name` output.
+api_origin_domain_name = "origin.staging.example.in"
+
+# ACM certificate for api_origin_domain_name, issued in aws_region (ap-south-1).
+alb_certificate_arn = "arn:aws:acm:ap-south-1:111122223333:certificate/00000000-0000-0000-0000-000000000000"
+
+# --- Optional ---------------------------------------------------------------------
+
+# Public host name(s) and their certificate. The certificate must be in us-east-1
+# (a CloudFront requirement). Leave both out to use the generated cloudfront.net name.
+# domain_names               = ["staging.example.in"]
+# cloudfront_certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/00000000-0000-0000-0000-000000000000"
+
+# Alarm notifications.
+# alert_email = "ops@example.in"
+
+# Lets the GitHub deploy workflow assume a role in this account (no access keys).
+# github_repository = "your-org/payana"
+# Set false in whichever environment is applied second when both share one AWS account.
+# create_github_oidc_provider = true
+
+# Signing in without an SMS gateway - read "Signing in on staging" in
+# infra/terraform/README.md before enabling: it makes one-time codes public.
+# api_node_env = "development"
+# sms_driver   = "dev"
+
+# Third-party credentials: set the value in the "payana-staging/api-integrations"
+# secret first, then list its JSON key here.
+# integration_secret_keys = ["SMS_API_KEY"]
+
+# Trial a Content-Security-Policy without blocking anything.
+# csp_report_only = true

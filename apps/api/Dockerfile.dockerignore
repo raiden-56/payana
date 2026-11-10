@@ -1,0 +1,30 @@
+# Ignore rules for `docker build -f apps/api/Dockerfile .` (context = repository root).
+# BuildKit picks this file up automatically because it sits next to the Dockerfile
+# and is named <Dockerfile>.dockerignore.
+
+# Start from nothing; send only what the API image is built from.
+*
+!packages/contracts
+!apps/api
+
+# Never send dependencies, build output, local data or secrets.
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+apps/api/.storage
+apps/api/.storage-test
+
+# Tests and local tooling are not part of the image.
+apps/api/test
+**/*.spec.ts
+apps/api/vitest.config.ts
+apps/api/vitest.config.e2e.ts
+apps/api/scripts
+apps/api/AGENTS.md
+apps/api/README.md
+apps/api/Dockerfile
+apps/api/Dockerfile.dockerignore

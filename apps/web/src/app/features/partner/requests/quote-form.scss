@@ -1,0 +1,39 @@
+@use 'mixins' as *;
+@use '../shared/forms' as f;
+
+:host {
+  display: block;
+}
+
+.qf {
+  @include f.shell;
+  gap: 1.15rem;
+}
+
+.qf__group {
+  @include f.group;
+
+  > legend {
+    font-size: var(--fs-sm);
+    font-weight: 650;
+  }
+}
+
+.qf__fare .input {
+  font-size: 1.5rem;
+  font-weight: 800;
+  min-height: 3.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.qf__fare .input-group__addon {
+  font-size: 1.3rem;
+}
+
+.chips {
+  @include f.chips;
+}
+
+.add {
+  @include f.inline-add;
+}

@@ -1,0 +1,166 @@
+<app-partner-head heading="Get verified" lead="Travellers only see verified drivers. It takes about ten minutes, and you can stop and come back at any step." />
+
+@switch (store.profile.status()) {
+  @case ('error') {
+    <app-state-panel [error]="store.profile.error()" (retry)="store.profile.load()" />
+  }
+  @case ('ready') {
+    <nav aria-label="Set-up steps">
+      <ol class="steps">
+        @for (s of steps(); track s.id) {
+          <li>
+            <button
+              type="button"
+              class="steps__item"
+              [class.is-current]="step() === s.id"
+              [class.is-done]="s.done"
+              [attr.aria-current]="step() === s.id ? 'step' : null"
+              [disabled]="s.id !== 'profile' && !store.hasProfile()"
+              (click)="go(s.id)"
+            >
+              <span class="steps__num" aria-hidden="true">
+                @if (s.done) { <app-icon name="check" [size]="15" /> } @else { {{ s.index }} }
+              </span>
+              <span class="steps__label">{{ s.label }}<span class="visually-hidden">{{ s.done ? ' — done' : ' — to do' }}</span></span>
+            </button>
+          </li>
+        }
+      </ol>
+    </nav>
+
+    <section class="card step" [attr.aria-label]="'Step: ' + step()">
+      @switch (step()) {
+        @case ('profile') {
+          <app-profile-form [profile]="profile()" submitLabel="Save and continue" (saved)="next()" />
+        }
+
+        @case ('vehicle') {
+          <header class="step__head">
+            <h2>Your vehicle</h2>
+            <p>List the vehicle you will take trips in. A fleet owner can add more after this.</p>
+          </header>
+          @if (vehicles().length && !addingVehicle()) {
+            <ul class="rows">
+              @for (v of vehicles(); track v.id) {
+                <li class="row">
+                  <app-icon name="car" [size]="20" />
+                  <div><strong>{{ v.make }} {{ v.model }}</strong><span class="tabular">{{ plate(v.registrationNumber) }}</span></div>
+                  <a class="link" routerLink="/partner/vehicles">Edit</a>
+                </li>
+              }
+            </ul>
+            <div class="form-actions">
+              <button type="button" class="btn btn--outline" (click)="addingVehicle.set(true)"><app-icon name="plus" [size]="16" /> Add another</button>
+              <button type="button" class="btn btn--accent" (click)="next()">Continue <app-icon class="btn__arrow" name="arrow-right" [size]="17" /></button>
+            </div>
+          } @else {
+            <app-vehicle-form [cancellable]="vehicles().length > 0" submitLabel="Save vehicle" (saved)="onVehicleSaved()" (cancelled)="addingVehicle.set(false)" />
+          }
+        }
+
+        @case ('person-documents') {
+          <header class="step__head">
+            <h2>Your documents</h2>
+            <p>Clear photos or scans. Our team checks each one; you will see its status here.</p>
+          </header>
+          <div class="slots">
+            @for (type of personDocTypes(); track type) {
+              <app-document-slot [type]="type" [document]="doc(type, null)" (submitted)="store.refreshDocuments()" />
+            }
+            @if (isHired()) {
+              <app-document-slot [type]="ownerLetter" [optional]="true" [document]="doc(ownerLetter, null)" (submitted)="store.refreshDocuments()" />
+            }
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn--accent" (click)="next()">Continue <app-icon class="btn__arrow" name="arrow-right" [size]="17" /></button>
+          </div>
+        }
+
+        @case ('vehicle-documents') {
+          <header class="step__head">
+            <h2>Vehicle documents</h2>
+            <p>Four documents for each vehicle. All must be current for the vehicle to take bookings.</p>
+          </header>
+          @for (v of vehicles(); track v.id) {
+            <h3 class="slots__title">{{ v.make }} {{ v.model }} · <span class="tabular">{{ plate(v.registrationNumber) }}</span></h3>
+            <div class="slots">
+              @for (type of vehicleDocTypes; track type) {
+                <app-document-slot [type]="type" [vehicleId]="v.id" [document]="doc(type, v.id)" (submitted)="store.refreshDocuments()" />
+              }
+              <app-document-slot [type]="puc" [vehicleId]="v.id" [optional]="true" [document]="doc(puc, v.id)" (submitted)="store.refreshDocuments()" />
+            </div>
+          } @empty {
+            <app-state-panel kind="info" title="Add a vehicle first" message="Vehicle documents are attached to a vehicle.">
+              <button type="button" class="btn btn--dark btn--sm" (click)="go('vehicle')">Add a vehicle</button>
+            </app-state-panel>
+          }
+          <div class="form-actions">
+            <button type="button" class="btn btn--accent" (click)="next()">Continue <app-icon class="btn__arrow" name="arrow-right" [size]="17" /></button>
+          </div>
+        }
+
+        @default {
+          <header class="step__head">
+            <h2>Review and submit</h2>
+            <p>When every item is ticked, send your application to our verification team.</p>
+          </header>
+          <ul class="checklist">
+            @for (s of steps(); track s.id) {
+              @if (s.id !== 'review') {
+                <li [class.is-done]="s.done">
+                  <span class="checklist__mark" aria-hidden="true"><app-icon [name]="s.done ? 'check' : 'minus'" [size]="15" /></span>
+                  <span>{{ s.label }}<span class="visually-hidden">{{ s.done ? ' — done' : ' — not finished' }}</span></span>
+                  @if (!s.done) {
+                    <button type="button" class="link" (click)="go(s.id)">Finish this</button>
+                  }
+                </li>
+              }
+            }
+          </ul>
+
+          @if (isHired()) {
+            <p class="notice">
+              <app-icon name="info" [size]="18" />
+              <span>You drive someone else’s vehicle, so its owner also has to authorise you. Ask them to invite your number from their <a class="link" routerLink="/partner/team">Team</a> page; the invitation will appear in yours.</span>
+            </p>
+          }
+
+          @switch (status()) {
+            @case ('pending') {
+              <p class="notice notice--success"><app-icon name="clock" [size]="18" /> <span><strong>Sent for review.</strong> Nothing more is needed right now. You will be notified when a decision is made.</span></p>
+            }
+            @case ('approved') {
+              <p class="notice notice--success"><app-icon name="shield-check" [size]="18" /> <span><strong>You are verified.</strong> Go online from the dashboard to start receiving requests.</span></p>
+            }
+            @case ('suspended') {
+              <p class="notice notice--danger"><app-icon name="lock" [size]="18" /> <span>Your listing is suspended. <a class="link" routerLink="/help">Contact support</a>.</span></p>
+            }
+            @default {
+              @if (status() === 'changes_requested' || status() === 'rejected') {
+                <p class="notice notice--warning"><app-icon name="alert" [size]="18" /> <span>Replace the documents marked “Rejected”, then submit again.</span></p>
+              }
+              @if (problem()) {
+                <p class="notice notice--danger" role="alert"><app-icon name="alert-circle" [size]="18" /> <span>{{ problem() }}</span></p>
+              }
+              <div class="form-actions">
+                <button type="button" class="btn btn--accent btn--lg" [class.is-loading]="busy()" [disabled]="busy() || !canSubmit()" (click)="submit()">
+                  <app-icon name="send" [size]="18" /> Submit for review
+                </button>
+              </div>
+              @if (!canSubmit()) {
+                <p class="subtle text-center">Finish the items above to submit.</p>
+              }
+            }
+          }
+          @if (status() === 'pending' || status() === 'approved') {
+            <div class="form-actions"><a class="btn btn--dark" routerLink="/partner">Go to dashboard</a></div>
+          }
+        }
+      }
+    </section>
+  }
+  @default {
+    <span class="skeleton" style="height: 3.5rem; margin-bottom: 1rem" aria-hidden="true"></span>
+    <span class="skeleton" style="height: 26rem; border-radius: var(--r-lg)" aria-hidden="true"></span>
+  }
+}

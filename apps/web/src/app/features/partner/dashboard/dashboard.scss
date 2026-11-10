@@ -1,0 +1,109 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+.dash {
+  display: grid;
+  gap: var(--s-5);
+  align-items: start;
+
+  @include from($bp-lg) {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: var(--s-6);
+  }
+
+  @include from($bp-xl) {
+    grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+  }
+}
+
+.dash__banner {
+  grid-column: 1 / -1;
+}
+
+.dash__metrics {
+  .panel__head {
+    flex-wrap: wrap;
+
+    h2 {
+      font-size: 1.15rem;
+    }
+  }
+
+  .segmented__item {
+    min-height: 2.1rem;
+    padding-inline: 0.8rem;
+  }
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+  grid-auto-flow: dense;
+  transition: opacity var(--dur-2);
+
+  @include from($bp-sm) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  &.is-refreshing {
+    opacity: 0.55;
+  }
+}
+
+.tile {
+  display: grid;
+  gap: 0.15rem;
+  align-content: start;
+  padding: 0.85rem 0.9rem;
+  border-radius: var(--r-md);
+  background: var(--sand-100);
+
+  // One cell on phones (8 tiles fill 2 columns), two from tablets up (9 cells fill 3 columns).
+  &--wide {
+    background: var(--marigold-100);
+
+    @include from($bp-sm) {
+      grid-column: span 2;
+    }
+  }
+}
+
+.tile__icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 0.25rem;
+  border-radius: 50%;
+  background: var(--sand-0);
+  color: var(--laterite-600);
+}
+
+.tile__value {
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  font-weight: 800;
+  font-stretch: 108%;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+}
+
+.tile__label {
+  font-size: var(--fs-xs);
+  color: var(--ink-700);
+  line-height: 1.35;
+}
+
+.dash__col {
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.dash__col-head h2 {
+  font-size: 1.25rem;
+}

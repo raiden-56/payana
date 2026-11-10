@@ -1,0 +1,127 @@
+<form class="qf" (submit)="$event.preventDefault(); send()" novalidate>
+  <div class="field">
+    <label class="field__label" for="qf-fare">Your fare for this trip</label>
+    <div class="input-group qf__fare">
+      <span class="input-group__addon" aria-hidden="true">₹</span>
+      <input
+        id="qf-fare"
+        class="input"
+        type="text"
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="450"
+        [formControl]="form.controls.fare"
+        [attr.aria-invalid]="errors.invalid('fare')"
+        aria-describedby="qf-fare-help"
+        (blur)="checkFare()"
+      />
+    </div>
+    @if (errors.message('fare'); as message) {
+      <p class="field__error" id="qf-fare-help"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+    } @else if (request().estimate; as estimate) {
+      <p class="field__hint" id="qf-fare-help">The customer was shown an estimate of {{ estimate.low | money }} – {{ estimate.high | money }}. Whole rupees; this is the price they pay you.</p>
+    } @else {
+      <p class="field__hint" id="qf-fare-help">Whole rupees. This is the price the customer pays you.</p>
+    }
+    @if (outlier(); as o) {
+      <p class="notice notice--warning" role="status">
+        <app-icon name="alert" [size]="18" />
+        <span>That is {{ o === 'much_higher' ? 'far above' : 'far below' }} the estimate the customer saw. Check the amount — you can still send it.</span>
+      </p>
+    }
+  </div>
+
+  <div class="field">
+    <label class="field__label" for="qf-vehicle">Vehicle</label>
+    @if (vehicles().length) {
+      <select id="qf-vehicle" class="select" [formControl]="form.controls.vehicleId" [attr.aria-invalid]="errors.invalid('vehicleId')" aria-describedby="qf-vehicle-help">
+        @for (v of vehicles(); track v.id) {
+          <option [value]="v.id">{{ v.label }}</option>
+        }
+      </select>
+      @if (errors.message('vehicleId'); as message) {
+        <p class="field__error" id="qf-vehicle-help"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+      } @else if (selectedMismatch()) {
+        <p class="field__error" id="qf-vehicle-help"><app-icon name="alert" [size]="14" /> The customer asked for {{ wantedCategory() }}. This vehicle is a different kind.</p>
+      }
+    } @else {
+      <p class="notice notice--warning"><app-icon name="alert" [size]="18" /> <span>You have no vehicle to quote with. <a class="link" routerLink="/partner/vehicles">Add one</a>.</span></p>
+    }
+  </div>
+
+  <fieldset class="qf__group" [attr.aria-describedby]="errors.message('inclusions') ? 'qf-inc-err' : null">
+    <legend>Included in the fare</legend>
+    <div class="chips">
+      @for (item of suggestions; track item) {
+        <button type="button" class="chip" [attr.aria-pressed]="inclusions().includes(item)" (click)="toggleInclusion(item)">{{ item }}</button>
+      }
+      @for (item of inclusions(); track item) {
+        @if (!suggestions.includes($any(item))) {
+          <button type="button" class="chip" aria-pressed="true" (click)="toggleInclusion(item)">{{ item }} <app-icon name="close" [size]="13" /></button>
+        }
+      }
+    </div>
+    <div class="add">
+      <label class="visually-hidden" for="qf-inc">Something else included</label>
+      <input id="qf-inc" class="input" type="text" maxlength="60" placeholder="Something else" [value]="newInclusion()" (input)="newInclusion.set($any($event.target).value)" (keydown.enter)="$event.preventDefault(); add('inclusions')" />
+      <button type="button" class="btn btn--outline btn--sm" (click)="add('inclusions')">Add</button>
+    </div>
+    @if (errors.message('inclusions'); as message) {
+      <p class="field__error" id="qf-inc-err" role="alert"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+    }
+  </fieldset>
+
+  <fieldset class="qf__group" [attr.aria-describedby]="errors.message('exclusions') ? 'qf-exc-err' : null">
+    <legend>Not included <span class="field__optional">(optional)</span></legend>
+    @if (exclusions().length) {
+      <div class="chips">
+        @for (item of exclusions(); track item) {
+          <button type="button" class="chip" (click)="removeExclusion(item)" [attr.aria-label]="'Remove ' + item">{{ item }} <app-icon name="close" [size]="13" /></button>
+        }
+      </div>
+    }
+    <div class="add">
+      <label class="visually-hidden" for="qf-exc">Something not included</label>
+      <input id="qf-exc" class="input" type="text" maxlength="60" placeholder="For example: entry tickets" [value]="newExclusion()" (input)="newExclusion.set($any($event.target).value)" (keydown.enter)="$event.preventDefault(); add('exclusions')" />
+      <button type="button" class="btn btn--outline btn--sm" (click)="add('exclusions')">Add</button>
+    </div>
+    @if (errors.message('exclusions'); as message) {
+      <p class="field__error" id="qf-exc-err" role="alert"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+    }
+  </fieldset>
+
+  <div class="form-grid">
+    @if (isImmediate()) {
+      <div class="field">
+        <label class="field__label" for="qf-eta">Minutes to reach the pickup</label>
+        <input id="qf-eta" class="input" type="number" inputmode="numeric" min="1" max="180" [formControl]="form.controls.etaMinutes" [attr.aria-invalid]="errors.invalid('etaMinutes')" aria-describedby="qf-eta-err" />
+        @if (errors.message('etaMinutes'); as message) {
+          <p class="field__error" id="qf-eta-err"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        }
+      </div>
+    }
+    <div class="field">
+      <label class="field__label" for="qf-valid">Offer stands for</label>
+      <select id="qf-valid" class="select" [formControl]="form.controls.validForMinutes">
+        @for (option of validity(); track option.minutes) {
+          <option [ngValue]="option.minutes">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+    <div class="field span-2">
+      <label class="field__label" for="qf-note">Note for the customer <span class="field__optional">(optional)</span></label>
+      <input id="qf-note" class="input" type="text" maxlength="200" placeholder="I will wait at the Main Beach parking gate" [formControl]="form.controls.pickupNote" [attr.aria-invalid]="errors.invalid('pickupNote')" />
+    </div>
+  </div>
+
+  @if (problem()) {
+    <p class="notice notice--danger" role="alert">
+      <app-icon name="alert-circle" [size]="18" />
+      <span>{{ problem() }} @if (planLimit()) { <a class="link" routerLink="/partner/plan">See plans</a> }</span>
+    </p>
+  }
+
+  <button type="submit" class="btn btn--accent btn--lg btn--block" [class.is-loading]="busy()" [disabled]="busy() || !vehicles().length">
+    <app-icon name="send" [size]="18" /> Send quote
+  </button>
+</form>

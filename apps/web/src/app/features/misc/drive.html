@@ -1,0 +1,190 @@
+<!-- ===== Hero ===== -->
+<section class="hero band">
+  <app-photo class="hero__photo" key="autos" [priority]="true" [decorative]="true" />
+  <div class="container hero__grid">
+    <div class="hero__copy">
+      <span class="eyebrow">For drivers and vehicle owners</span>
+      <h1>Your vehicle. Your rates. <em>More riders.</em></h1>
+      <p>
+        Travellers arriving in {{ brand.launchRegion }} look for a driver before they reach the stand. Be the one they find —
+        and keep the fare you quote.
+      </p>
+      <div class="cluster">
+        @if (isDriver()) {
+          <a routerLink="/partner" class="btn btn--accent btn--lg">Open my dashboard <app-icon class="btn__arrow" name="arrow-right" [size]="20" /></a>
+        } @else if (signUpOpen()) {
+          <a routerLink="/sign-in" [queryParams]="{ intent: 'driver', returnUrl: '/partner/onboarding' }" class="btn btn--accent btn--lg">
+            Start now <app-icon class="btn__arrow" name="arrow-right" [size]="20" />
+          </a>
+        } @else {
+          <p class="notice notice--warning"><app-icon name="info" [size]="18" /> <span>New driver sign-ups are paused for the moment. Please check back soon.</span></p>
+        }
+        @if (plansOn()) {
+          <a routerLink="." fragment="plans" class="btn btn--on-dark btn--lg">See plans</a>
+        }
+      </div>
+    </div>
+    <div class="hero__art" aria-hidden="true">
+      <span class="hero__sun"></span>
+      <app-vehicle-art icon="auto" [moving]="true" />
+      <span class="hero__road"></span>
+    </div>
+  </div>
+  <div class="taxi-band" aria-hidden="true"></div>
+</section>
+
+<!-- ===== Why ===== -->
+<section class="section">
+  <div class="container">
+    <header class="section-head" appReveal>
+      <span class="eyebrow">Why drivers join</span>
+      <h2>A marketplace, not a boss.</h2>
+    </header>
+    <ul class="grid grid--3 why">
+      <li appReveal [revealDelay]="0">
+        <app-icon name="rupee" [size]="26" />
+        <h3>You set the price</h3>
+        <p>Every request is answered with your own quote. There is no fixed fare and no surge we control.</p>
+      </li>
+      <li appReveal [revealDelay]="90">
+        <app-icon name="calendar" [size]="26" />
+        <h3>Bookings in advance</h3>
+        <p>Airport runs, station pickups and day tours are requested days ahead, so you can plan your week.</p>
+      </li>
+      <li appReveal [revealDelay]="180">
+        <app-icon name="shield-check" [size]="26" />
+        <h3>A verified badge</h3>
+        <p>Once your papers are checked, your listing says so. Visitors choose verified drivers first.</p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== Steps ===== -->
+<section class="section section--sunken" appScrollProgress>
+  <div class="container">
+    <header class="section-head section-head--center" appReveal>
+      <span class="eyebrow">Getting started</span>
+      <h2>Four steps from sign-up to your first quote.</h2>
+    </header>
+    <ol class="steps">
+      @for (s of steps; track s.title; let i = $index) {
+        <li class="step" appReveal [revealDelay]="i * 110">
+          <span class="step__n">{{ i + 1 }}</span>
+          <app-icon [name]="s.icon" [size]="24" />
+          <h3>{{ s.title }}</h3>
+          <p>{{ s.text }}</p>
+        </li>
+      }
+    </ol>
+  </div>
+</section>
+
+<!-- ===== Documents ===== -->
+<section class="section">
+  <div class="container docs">
+    <div appReveal="left">
+      <span class="eyebrow">Have these ready</span>
+      <h2>The papers we check.</h2>
+      <p class="muted">Clear phone photos are fine. We look at each one, tell you if anything is unreadable, and remind you before any of them expires.</p>
+      <p class="notice">
+        <app-icon name="users" [size]="18" />
+        <span><strong>Driving someone else’s vehicle?</strong> The registered owner signs in too and authorises you for that vehicle. It takes them a minute.</span>
+      </p>
+    </div>
+    <ul class="docs__list" appReveal="right">
+      @for (d of documents; track d) {
+        <li><app-icon name="check" [size]="16" /> {{ d }}</li>
+      }
+    </ul>
+  </div>
+</section>
+
+<!-- ===== Plans ===== -->
+@if (plansOn()) {
+  <section class="section section--sunken" id="plans">
+    <div class="container">
+      <header class="section-head section-head--center" appReveal>
+        <span class="eyebrow">Plans</span>
+        <h2>Start free. Pay only if you want more.</h2>
+        <p>Listing and quoting is free. Paid plans add reach — they never change what you earn on a trip.</p>
+      </header>
+
+      @switch (plans.status()) {
+        @case ('error') {
+          <app-state-panel [error]="plans.error()" (retry)="plans.load()" />
+        }
+        @case ('ready') {
+          <ul class="plans">
+            @for (plan of plans.data(); track plan.id; let i = $index) {
+              <li class="plan" [class.plan--pick]="plan.isRecommended" appReveal [revealDelay]="i * 90">
+                @if (plan.isRecommended) {
+                  <span class="plan__flag">Most chosen</span>
+                }
+                <h3>{{ plan.name }}</h3>
+                <p class="plan__desc">{{ plan.description }}</p>
+                <p class="plan__price">
+                  @if (plan.price.amountMinor === 0) {
+                    <strong>Free</strong>
+                  } @else {
+                    <strong>{{ plan.price | money }}</strong><span>/ {{ period(plan) }}</span>
+                  }
+                </p>
+                <ul class="plan__list">
+                  @for (item of entitlements(plan); track item) {
+                    <li><app-icon name="check" [size]="15" /> {{ item }}</li>
+                  }
+                  @for (item of plan.highlights; track item) {
+                    <li><app-icon name="sparkle" [size]="15" /> {{ item }}</li>
+                  }
+                </ul>
+                @if (isDriver()) {
+                  <a routerLink="/partner/plan" class="btn btn--block" [class.btn--accent]="plan.isRecommended" [class.btn--outline]="!plan.isRecommended">Choose in my dashboard</a>
+                } @else if (signUpOpen()) {
+                  <a routerLink="/sign-in" [queryParams]="{ intent: 'driver', returnUrl: '/partner/onboarding' }" class="btn btn--block" [class.btn--accent]="plan.isRecommended" [class.btn--outline]="!plan.isRecommended">
+                    {{ plan.price.amountMinor === 0 ? 'Start free' : 'Start with ' + plan.name }}
+                  </a>
+                }
+              </li>
+            }
+          </ul>
+        }
+        @default {
+          <ul class="plans" aria-hidden="true">
+            @for (n of [1, 2, 3]; track n) {
+              <li><span class="skeleton" style="height: 26rem; border-radius: var(--r-lg)"></span></li>
+            }
+          </ul>
+        }
+      }
+    </div>
+  </section>
+}
+
+<!-- ===== Straight answers ===== -->
+<section class="section">
+  <div class="container container--narrow">
+    <header class="section-head section-head--center" appReveal>
+      <span class="eyebrow">Straight answers</span>
+      <h2>Before you sign up.</h2>
+    </header>
+    <div class="faq" appReveal>
+      <details name="drive-faq">
+        <summary>Does {{ brand.name }} take a cut of my fare?<app-icon name="plus" [size]="20" /></summary>
+        <p>No. The customer pays you the fare you quoted, directly. If a booking fee is ever switched on, it is charged to the customer on top and shown to them before they accept.</p>
+      </details>
+      <details name="drive-faq">
+        <summary>Do I need to install an app?<app-icon name="plus" [size]="20" /></summary>
+        <p>No — it works in your phone’s browser and can be added to your home screen. One thing to know: a web app can share your location only while it is open on screen. Keep the dashboard open when you are available so nearby riders can see how close you are; if it has been closed for a while, we show you as “last seen” rather than pretending to know where you are.</p>
+      </details>
+      <details name="drive-faq">
+        <summary>How long does verification take?<app-icon name="plus" [size]="20" /></summary>
+        <p>Documents are reviewed in the order they arrive, and you are notified as soon as there is a decision. If something is unclear, we tell you exactly which document and why, and you upload a new photo.</p>
+      </details>
+      <details name="drive-faq">
+        <summary>What if I have to cancel a booking?<app-icon name="plus" [size]="20" /></summary>
+        <p>You can cancel from the booking, with a reason. Cancellations count: your cancellation rate is shown on your profile, so cancel only when you must.</p>
+      </details>
+    </div>
+  </div>
+</section>

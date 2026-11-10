@@ -1,0 +1,62 @@
+// Sass-only helpers shared by the partner forms. Emits no CSS by itself.
+@use 'mixins' as *;
+
+// A form laid out as a stack of titled groups.
+@mixin shell {
+  display: grid;
+  gap: clamp(1.25rem, 1rem + 1vw, 1.9rem);
+  min-width: 0;
+}
+
+// <fieldset> with a heading-like <legend> and no browser chrome.
+@mixin group {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+
+  > legend {
+    padding: 0;
+    margin-bottom: 0.15rem;
+    font-size: 1.08rem;
+    font-weight: 750;
+    font-stretch: 106%;
+    letter-spacing: -0.01em;
+  }
+}
+
+@mixin chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+
+  .chip {
+    // Comfortable touch target on phones.
+    min-height: 2.75rem;
+  }
+}
+
+// A row made of an input and a small button.
+@mixin inline-add {
+  display: flex;
+  gap: 0.5rem;
+  max-width: 22rem;
+
+  .input {
+    min-width: 0;
+  }
+
+  .btn {
+    min-height: 2.9rem;
+    flex: none;
+  }
+}
+
+// Hint/help line carrying a small icon.
+@mixin icon-line {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}

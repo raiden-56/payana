@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /partner
+Disallow: /account
+Disallow: /bookings
+Disallow: /requests
+Disallow: /api/

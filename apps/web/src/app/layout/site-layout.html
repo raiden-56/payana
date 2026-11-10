@@ -1,0 +1,175 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="scroll-meter" aria-hidden="true"></div>
+
+<header class="site-header" [class.is-scrolled]="scrolled()">
+  <div class="container site-header__inner">
+    <a routerLink="/" class="brand" aria-label="{{ brand.name }} home">
+      <app-logo />
+    </a>
+
+    <nav class="nav" aria-label="Main">
+      <a routerLink="/explore" routerLinkActive="is-active" class="nav__link">Find a ride</a>
+      @if (showPackages()) {
+        <a routerLink="/packages" routerLinkActive="is-active" class="nav__link">Sightseeing</a>
+      }
+      @if (showDrive()) {
+        <a routerLink="/drive" routerLinkActive="is-active" class="nav__link">Drive with us</a>
+      }
+      <a routerLink="/help" routerLinkActive="is-active" class="nav__link">Help</a>
+    </nav>
+
+    <div class="actions">
+      @if (auth.isAuthenticated()) {
+        <a routerLink="/account/notifications" class="btn btn--ghost btn--icon bell" [attr.aria-label]="unread() ? unread() + ' unread notifications' : 'Notifications'">
+          <app-icon name="bell" />
+          @if (unread()) {
+            <span class="bell__count" aria-hidden="true">{{ unread() > 9 ? '9+' : unread() }}</span>
+          }
+        </a>
+
+        <div class="account">
+          <button
+            type="button"
+            class="account__trigger"
+            [attr.aria-expanded]="accountOpen()"
+            aria-haspopup="menu"
+            aria-controls="account-menu"
+            (click)="accountOpen.set(!accountOpen())"
+          >
+            <app-avatar [name]="auth.displayName()" [size]="36" />
+            <span class="account__name only-desktop">{{ auth.displayName() }}</span>
+            <app-icon name="chevron-down" [size]="16" class="only-desktop" />
+          </button>
+          @if (accountOpen()) {
+            <!-- Pointer-only dismiss area; keyboard users close it with Escape (handled on the host). -->
+            <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+            <div class="scrim" (click)="accountOpen.set(false)"></div>
+            <div class="menu" id="account-menu" role="menu">
+              @if (auth.isCustomer()) {
+                <a role="menuitem" routerLink="/bookings" class="menu__item"><app-icon name="ticket" [size]="18" /> My bookings</a>
+              }
+              @if (auth.isDriver()) {
+                <a role="menuitem" routerLink="/partner" class="menu__item"><app-icon name="car" [size]="18" /> Partner dashboard</a>
+              }
+              @if (auth.isAdmin()) {
+                <a role="menuitem" routerLink="/admin" class="menu__item"><app-icon name="grid" [size]="18" /> Admin console</a>
+              }
+              <a role="menuitem" routerLink="/account" class="menu__item"><app-icon name="user" [size]="18" /> Account &amp; privacy</a>
+              <hr />
+              <button role="menuitem" type="button" class="menu__item" (click)="signOut()"><app-icon name="logout" [size]="18" /> Sign out</button>
+            </div>
+          }
+        </div>
+      } @else {
+        <a routerLink="/sign-in" class="btn btn--ghost btn--sm only-desktop">Sign in</a>
+      }
+
+      <a routerLink="/request" class="btn btn--accent btn--sm book">Book a ride</a>
+
+      <button
+        type="button"
+        class="btn btn--ghost btn--icon burger"
+        [attr.aria-expanded]="drawerOpen()"
+        aria-controls="site-drawer"
+        aria-label="Menu"
+        (click)="drawerOpen.set(!drawerOpen())"
+      >
+        <app-icon [name]="drawerOpen() ? 'close' : 'menu'" [size]="22" />
+      </button>
+    </div>
+  </div>
+</header>
+
+@if (drawerOpen()) {
+  <!-- Pointer-only dismiss area; keyboard users close it with Escape (handled on the host). -->
+  <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+  <div class="drawer-scrim" (click)="drawerOpen.set(false)"></div>
+  <nav class="drawer" id="site-drawer" aria-label="Menu">
+    <a routerLink="/explore" class="drawer__link"><app-icon name="search" /> Find a ride</a>
+    <a routerLink="/request" class="drawer__link"><app-icon name="route" /> Book a ride</a>
+    @if (showPackages()) {
+      <a routerLink="/packages" class="drawer__link"><app-icon name="compass" /> Sightseeing</a>
+    }
+    @if (showDrive()) {
+      <a routerLink="/drive" class="drawer__link"><app-icon name="car" /> Drive with us</a>
+    }
+    <a routerLink="/help" class="drawer__link"><app-icon name="help" /> Help</a>
+    <div class="drawer__foot">
+      @if (auth.isAuthenticated()) {
+        <button type="button" class="btn btn--outline btn--block" (click)="signOut()">Sign out</button>
+      } @else {
+        <a routerLink="/sign-in" class="btn btn--dark btn--block">Sign in</a>
+        <a routerLink="/sign-in" [queryParams]="{ intent: 'driver' }" class="btn btn--outline btn--block">Driver sign in</a>
+      }
+    </div>
+  </nav>
+}
+
+<main id="main" tabindex="-1">
+  <router-outlet />
+</main>
+
+<footer class="site-footer">
+  <div class="site-footer__body band">
+    <div class="container footer-grid">
+      <div class="footer-brand">
+        <app-logo />
+        <p>{{ brand.tagline }}. Verified local drivers, quotes you can compare, no surge.</p>
+        @if (supportPhone() || config.support().email || whatsappLink()) {
+          <ul class="contact">
+            @if (supportPhone()) {
+              <li><a [href]="'tel:' + config.support().phone"><app-icon name="phone" [size]="16" /> {{ supportPhone() }}</a></li>
+            }
+            @if (whatsappLink()) {
+              <li><a [href]="whatsappLink()" target="_blank" rel="noopener noreferrer"><app-icon name="message" [size]="16" /> WhatsApp us</a></li>
+            }
+            @if (config.support().email) {
+              <li><a [href]="'mailto:' + config.support().email"><app-icon name="send" [size]="16" /> {{ config.support().email }}</a></li>
+            }
+          </ul>
+        }
+      </div>
+
+      <nav aria-label="Travel">
+        <h2>Travel</h2>
+        <ul>
+          <li><a routerLink="/explore">Find a ride</a></li>
+          <li><a routerLink="/request">Book ahead</a></li>
+          @if (showPackages()) {
+            <li><a routerLink="/packages">Sightseeing tours</a></li>
+          }
+          @if (auth.isCustomer()) {
+            <li><a routerLink="/bookings">My bookings</a></li>
+          }
+        </ul>
+      </nav>
+
+      <nav aria-label="Drivers">
+        <h2>Drivers</h2>
+        <ul>
+          <li><a routerLink="/drive">Drive with {{ brand.name }}</a></li>
+          <li><a routerLink="/drive" fragment="plans">Plans &amp; pricing</a></li>
+          <li><a routerLink="/sign-in" [queryParams]="{ intent: 'driver' }">Partner sign in</a></li>
+        </ul>
+      </nav>
+
+      <nav aria-label="Help and legal">
+        <h2>Help</h2>
+        <ul>
+          <li><a routerLink="/help">Help centre</a></li>
+          <li><a routerLink="/legal/privacy">Privacy notice</a></li>
+          <li><a routerLink="/legal/terms">Terms of use</a></li>
+          <li><a routerLink="/legal/credits">Photo credits</a></li>
+          <li><button type="button" (click)="consent.preferencesOpen.set(true)">Privacy choices</button></li>
+        </ul>
+      </nav>
+    </div>
+
+    <p class="container footer-word" aria-hidden="true">{{ brand.name }}</p>
+    <div class="container footer-base">
+      <p>© {{ year }} {{ brand.name }}. A marketplace that connects you with independent local drivers.</p>
+      <p class="kn" lang="kn">ಕರಾವಳಿಯ ಪಯಣ, ಸ್ಥಳೀಯರ ಜೊತೆ</p>
+    </div>
+  </div>
+  <div class="taxi-band" aria-hidden="true"></div>
+</footer>

@@ -1,0 +1,129 @@
+<header class="a-head">
+  <div>
+    <h1>Overview</h1>
+    <p>
+      Good to see you, {{ auth.displayName() }}.
+      @if (overview.data(); as o) {
+        Figures as of <time [attr.datetime]="o.generatedAt">{{ o.generatedAt | dateTime }}</time>.
+      }
+    </p>
+  </div>
+  @if (canRead) {
+    <div class="a-head__actions">
+      <button type="button" class="btn btn--outline btn--sm" [class.is-loading]="overview.refreshing()" (click)="overview.load()">
+        <app-icon name="refresh" [size]="16" /> Refresh
+      </button>
+    </div>
+  }
+</header>
+
+@if (!canRead) {
+  <app-state-panel kind="info" title="Welcome to the console" message="Use the menu to open the areas your role covers." />
+} @else {
+  @switch (overview.status()) {
+    @case ('error') {
+      <app-state-panel [error]="overview.error()" (retry)="overview.load()" />
+    }
+    @case ('ready') {
+      @let o = overview.data()!;
+
+      <!-- What needs a person today -->
+      @if (attention().length) {
+        <section aria-labelledby="attention-title" class="block">
+          <h2 id="attention-title" class="block__title">Needs attention</h2>
+          <ul class="attention">
+            @for (item of attention(); track item.label; let i = $index) {
+              <li appReveal [revealDelay]="i * 60">
+                <a class="attention__card" [class.is-clear]="item.count === 0" [class.is-urgent]="item.urgent && item.count > 0" [routerLink]="item.link" [queryParams]="item.query">
+                  <span class="attention__icon"><app-icon [name]="item.count === 0 ? 'check' : item.icon" [size]="22" /></span>
+                  <span class="attention__count tabular">{{ item.count }}</span>
+                  <span class="attention__label">{{ item.label }}</span>
+                  <app-icon class="attention__go" name="arrow-right" [size]="18" />
+                </a>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      <!-- Headline numbers -->
+      <section aria-labelledby="numbers-title" class="block">
+        <h2 id="numbers-title" class="block__title">The marketplace today</h2>
+        <div class="tiles">
+          <article class="tile" appReveal>
+            <header><app-icon name="users" [size]="18" /> Customers</header>
+            <p class="tile__value" [appCountUp]="o.customers.total"></p>
+            <p class="tile__sub"><strong class="a-ok">+{{ o.customers.newLast7Days }}</strong> in the last 7 days</p>
+          </article>
+
+          <article class="tile" appReveal [revealDelay]="50">
+            <header><app-icon name="car" [size]="18" /> Drivers</header>
+            <p class="tile__value"><span [appCountUp]="o.drivers.verified"></span><small> / {{ o.drivers.total }}</small></p>
+            <p class="tile__sub">verified · <strong>{{ o.drivers.availableNow }}</strong> available now</p>
+          </article>
+
+          <article class="tile" appReveal [revealDelay]="100">
+            <header><app-icon name="search" [size]="18" /> Ride requests</header>
+            <p class="tile__value" [appCountUp]="o.requests.openNow"></p>
+            <p class="tile__sub">
+              open now · {{ o.requests.last7Days }} in 7 days
+              @if (quotedShare() !== null) {
+                · <strong>{{ quotedShare() }}%</strong> got a quote
+              }
+            </p>
+          </article>
+
+          <article class="tile" appReveal [revealDelay]="150">
+            <header><app-icon name="ticket" [size]="18" /> Bookings</header>
+            <p class="tile__value" [appCountUp]="o.bookings.activeNow"></p>
+            <p class="tile__sub">
+              active now · <strong class="a-ok">{{ o.bookings.completedLast7Days }}</strong> completed,
+              <strong [class.a-danger]="o.bookings.cancelledLast7Days > 0">{{ o.bookings.cancelledLast7Days }}</strong> cancelled in 7 days
+            </p>
+          </article>
+
+          <article class="tile tile--accent" appReveal [revealDelay]="200">
+            <header><app-icon name="rupee" [size]="18" /> Subscription revenue</header>
+            <p class="tile__value tile__value--money">{{ o.revenue.subscriptionsLast30Days | money }}</p>
+            <p class="tile__sub">last 30 days · <strong>{{ o.revenue.activeSubscriptions }}</strong> paid plans active</p>
+          </article>
+
+          <article class="tile" appReveal [revealDelay]="250">
+            <header><app-icon name="message" [size]="18" /> Support</header>
+            <p class="tile__value" [appCountUp]="o.support.openTickets"></p>
+            <p class="tile__sub">
+              open tickets ·
+              <strong [class.a-danger]="o.support.urgentTickets > 0">{{ o.support.urgentTickets }}</strong> urgent
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- Trend -->
+      <section class="a-panel block" aria-labelledby="trend-title">
+        <header>
+          <div>
+            <h2 id="trend-title">Requests and bookings, last {{ o.trend.length }} days</h2>
+            <p class="a-sub">How many ride requests came in each day, and how many turned into bookings.</p>
+          </div>
+        </header>
+        <div class="a-panel__body">
+          @if (o.trend.length) {
+            <app-trend-chart [points]="o.trend" />
+          } @else {
+            <p class="a-sub">No activity recorded yet.</p>
+          }
+        </div>
+      </section>
+    }
+    @default {
+      <div class="tiles" aria-hidden="true">
+        @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+          <span class="skeleton" style="height: 8.5rem; border-radius: var(--r-md)"></span>
+        }
+      </div>
+      <span class="skeleton" style="height: 18rem; margin-top: 1.25rem; border-radius: var(--r-md)" aria-hidden="true"></span>
+      <p class="visually-hidden" role="status">Loading the overview…</p>
+    }
+  }
+}

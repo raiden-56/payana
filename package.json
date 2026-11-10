@@ -1,0 +1,24 @@
+{
+  "name": "payana",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Payana - hyperlocal mobility and travel marketplace (Gokarna launch market)",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "setup": "npm --prefix packages/contracts ci && npm --prefix packages/contracts run build && npm --prefix apps/api ci && npm --prefix apps/web ci",
+    "infra:up": "docker compose up -d --wait postgres redis",
+    "infra:down": "docker compose down",
+    "contracts:build": "npm --prefix packages/contracts run build",
+    "api:dev": "npm --prefix apps/api run start:dev",
+    "api:migrate": "npm --prefix apps/api run migration:run",
+    "api:seed": "npm --prefix apps/api run seed",
+    "api:test": "npm --prefix apps/api test",
+    "web:dev": "npm --prefix apps/web start",
+    "web:build": "npm --prefix apps/web run build",
+    "web:test": "npm --prefix apps/web test",
+    "e2e": "npm --prefix apps/web run e2e"
+  }
+}

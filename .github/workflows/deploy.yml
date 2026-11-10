@@ -1,0 +1,275 @@
+name: Deploy
+
+# Manual release to staging or production.
+#
+#   Deploy    Run workflow, pick the environment, leave "ref" empty.
+#   Roll back Run workflow, pick the environment, set "ref" to the commit SHA
+#             (or tag) of the last good release. The API image for that commit
+#             is still in the registry (tags are immutable git SHAs), so it is
+#             redeployed without a rebuild; the web app is rebuilt from the
+#             same commit. Untick "Run database migrations" when rolling back:
+#             migrations only move forward, and code must stay compatible with
+#             the schema one release ahead of it.
+#   Faster API-only rollback, from a terminal with AWS access:
+#             aws ecs update-service --cluster <ECS_CLUSTER> --service <ECS_SERVICE> \
+#               --task-definition <ECS_API_TASK_FAMILY>:<previous revision>
+#   A release whose tasks never turn healthy needs no action: the ECS
+#   deployment circuit breaker restores the previous revision, and this
+#   workflow fails so the failure is visible.
+#
+# Authentication is OIDC: the job exchanges a short-lived GitHub token for the
+# role in AWS_DEPLOY_ROLE_ARN. There are no stored AWS keys. The role trusts
+# only jobs running in the named GitHub Environment, so that environment's
+# required reviewers gate every production deploy.
+#
+# Each GitHub Environment needs these *variables* (all non-secret; Terraform
+# prints them as the `github_environment_variables` output):
+#   AWS_REGION  AWS_DEPLOY_ROLE_ARN  ECR_REPOSITORY  ECS_CLUSTER  ECS_SERVICE
+#   ECS_API_TASK_FAMILY  ECS_MIGRATE_TASK_FAMILY  PRIVATE_SUBNET_IDS
+#   API_SECURITY_GROUP_ID  WEB_BUCKET  CLOUDFRONT_DISTRIBUTION_ID
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: environment
+        required: true
+      ref:
+        description: Commit SHA, tag or branch to release. Empty = the commit this run was started from.
+        type: string
+        required: false
+        default: ""
+      deploy_api:
+        description: Deploy the API
+        type: boolean
+        default: true
+      run_migrations:
+        description: Run database migrations before the API goes live
+        type: boolean
+        default: true
+      deploy_web:
+        description: Deploy the web app
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write # request the OIDC token AWS exchanges for credentials
+  contents: read
+
+# One deploy per environment at a time; a running deploy is never cancelled half-way.
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  api:
+    name: API to ${{ inputs.environment }}
+    if: inputs.deploy_api
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: ${{ inputs.environment }}
+    env:
+      TARGET_ENVIRONMENT: ${{ inputs.environment }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+      ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+      ECS_API_TASK_FAMILY: ${{ vars.ECS_API_TASK_FAMILY }}
+      ECS_MIGRATE_TASK_FAMILY: ${{ vars.ECS_MIGRATE_TASK_FAMILY }}
+      PRIVATE_SUBNET_IDS: ${{ vars.PRIVATE_SUBNET_IDS }}
+      API_SECURITY_GROUP_ID: ${{ vars.API_SECURITY_GROUP_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # The image tag is always the full commit SHA of what was checked out.
+      - name: Resolve image
+        id: image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          tag="$(git rev-parse HEAD)"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "uri=${REGISTRY}/${ECR_REPOSITORY}:${tag}" >> "$GITHUB_OUTPUT"
+          if aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids "imageTag=${tag}" > /dev/null 2>&1; then
+            echo "Image ${tag} is already in the registry; reusing it."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.image.outputs.exists == 'false'
+
+      # Build context is the repository root: the API image needs packages/contracts.
+      - name: Build and push the API image
+        if: steps.image.outputs.exists == 'false'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          provenance: false
+          tags: ${{ steps.image.outputs.uri }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run database migrations
+        if: inputs.run_migrations
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.uri }}
+        run: |
+          set -euo pipefail
+          source .github/scripts/ecs.sh
+
+          task_definition="$(register_with_image "$ECS_MIGRATE_TASK_FAMILY" "$IMAGE_URI")"
+          echo "Registered ${task_definition}"
+
+          task="$(aws ecs run-task \
+            --cluster "$ECS_CLUSTER" \
+            --launch-type FARGATE \
+            --task-definition "$task_definition" \
+            --started-by "github-${GITHUB_RUN_ID}" \
+            --network-configuration "awsvpcConfiguration={subnets=[${PRIVATE_SUBNET_IDS}],securityGroups=[${API_SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
+            --query 'tasks[0].taskArn' --output text)"
+          if [ -z "$task" ] || [ "$task" = "None" ]; then
+            echo "::error::The migration task could not be started."
+            exit 1
+          fi
+          echo "Started ${task}"
+
+          aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$task"
+
+          exit_code="$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$task" \
+            --query 'tasks[0].containers[0].exitCode' --output text)"
+          if [ "$exit_code" != "0" ]; then
+            aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$task" \
+              --query 'tasks[0].{stoppedReason:stoppedReason,containerReason:containers[0].reason,exitCode:containers[0].exitCode}'
+            echo "::error::Migrations failed (exit code ${exit_code}). The API was NOT updated. Logs: CloudWatch, stream prefix 'migrate'."
+            exit 1
+          fi
+          echo "Migrations applied."
+
+      - name: Deploy the API service
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.uri }}
+        run: |
+          set -euo pipefail
+          source .github/scripts/ecs.sh
+
+          task_definition="$(register_with_image "$ECS_API_TASK_FAMILY" "$IMAGE_URI")"
+          echo "Registered ${task_definition}"
+
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
+            --task-definition "$task_definition" > /dev/null
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+          # "Stable" is also what a circuit-breaker rollback looks like, so
+          # confirm the service settled on the revision this run registered.
+          live="$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --query "services[0].deployments[?status=='PRIMARY'] | [0].taskDefinition" --output text)"
+          if [ "$live" != "$task_definition" ]; then
+            echo "::error::The new tasks did not become healthy; ECS rolled back to ${live}. Logs: CloudWatch, stream prefix 'api'."
+            exit 1
+          fi
+
+          {
+            echo "### API deployed to ${TARGET_ENVIRONMENT}"
+            echo "- Image: \`${IMAGE_URI}\`"
+            echo "- Task definition: \`${task_definition}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  web:
+    name: Web to ${{ inputs.environment }}
+    # After the API, so the site never calls endpoints that are not live yet.
+    needs: api
+    if: ${{ always() && inputs.deploy_web && (needs.api.result == 'success' || needs.api.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: ${{ inputs.environment }}
+    env:
+      TARGET_ENVIRONMENT: ${{ inputs.environment }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      WEB_BUCKET: ${{ vars.WEB_BUCKET }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - uses: ./.github/actions/setup
+        with:
+          lockfile: apps/web/package-lock.json
+
+      - name: Build
+        working-directory: apps/web
+        run: |
+          npm ci
+          npm run build
+          test -f dist/web/browser/index.html
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Two passes, in this order, so index.html never points at a bundle that
+      # is not uploaded yet.
+      #
+      #   1. Content-hashed files (main-AB12CD34.js, styles-AB12CD34.css,
+      #      media/*): the name changes whenever the content does, so they are
+      #      cached for a year and never revalidated.
+      #   2. Everything else (index.html, ngsw.json, ngsw-worker.js,
+      #      app-config.json, the manifest, icons): "no-cache", i.e. always
+      #      revalidated, so a release or a config change is seen at once.
+      #
+      # Old bundles are deliberately left in the bucket: a visitor who loaded
+      # the previous index.html can still fetch its lazy chunks.
+      - name: Upload to S3
+        working-directory: apps/web/dist/web/browser
+        run: |
+          set -euo pipefail
+
+          aws s3 sync . "s3://${WEB_BUCKET}" \
+            --exclude "*" \
+            --include "*-????????.js" --include "*-????????.css" --include "media/*" \
+            --cache-control "public, max-age=31536000, immutable"
+
+          aws s3 sync . "s3://${WEB_BUCKET}" \
+            --exclude "*-????????.js" --exclude "*-????????.css" --exclude "media/*" \
+            --cache-control "no-cache"
+
+          # The CLI does not know this extension and would label it octet-stream.
+          if [ -f manifest.webmanifest ]; then
+            aws s3 cp manifest.webmanifest "s3://${WEB_BUCKET}/manifest.webmanifest" \
+              --content-type "application/manifest+json" --cache-control "no-cache"
+          fi
+
+      # These are served with "no-cache" and are not held at the edge; the
+      # invalidation covers anything cached before that header was in place.
+      - name: Invalidate the entry files
+        run: |
+          set -euo pipefail
+          invalidation="$(aws cloudfront create-invalidation \
+            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+            --paths /index.html /ngsw.json /ngsw-worker.js /safety-worker.js /app-config.json /manifest.webmanifest \
+            --query 'Invalidation.Id' --output text)"
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --id "$invalidation"
+
+          {
+            echo "### Web deployed to ${TARGET_ENVIRONMENT}"
+            echo "- Commit: \`$(git rev-parse HEAD)\`"
+            echo "- Bucket: \`${WEB_BUCKET}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

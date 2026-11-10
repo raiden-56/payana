@@ -1,0 +1,402 @@
+@use 'mixins' as *;
+
+:host {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+main {
+  flex: 1;
+  outline: none;
+}
+
+// --- header -------------------------------------------------------------------
+
+// A floating pill that detaches from the top edge.
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  padding: 0.75rem var(--gutter) 0;
+  pointer-events: none;
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  height: calc(var(--header-h) - 0.75rem);
+  max-width: var(--container);
+  margin-inline: auto;
+  padding: 0 0.5rem 0 1rem;
+  border-radius: var(--r-pill);
+  background: rgb(255 253 248 / 0.78);
+  backdrop-filter: saturate(1.5) blur(16px);
+  -webkit-backdrop-filter: saturate(1.5) blur(16px);
+  box-shadow:
+    0 0 0 1px rgb(74 48 20 / 0.06),
+    0 10px 30px -18px rgb(74 48 20 / 0.45);
+  pointer-events: auto;
+  transition:
+    box-shadow var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
+
+  .is-scrolled & {
+    background: rgb(255 253 248 / 0.94);
+    box-shadow:
+      0 0 0 1px rgb(74 48 20 / 0.08),
+      0 16px 40px -18px rgb(74 48 20 / 0.55);
+  }
+}
+
+
+.brand {
+  display: inline-flex;
+  border-radius: var(--r-sm);
+}
+
+.nav {
+  display: none;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: var(--s-4);
+
+  @include from($bp-lg) {
+    display: flex;
+  }
+}
+
+.nav__link {
+  position: relative;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  color: var(--ink-700);
+  transition:
+    color var(--dur-2),
+    background-color var(--dur-2);
+
+  // The underline grows from the centre on hover and stays for the active page.
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0.85rem;
+    right: 0.85rem;
+    bottom: 0.25rem;
+    height: 2.5px;
+    border-radius: 2px;
+    background: var(--laterite-600);
+  color: var(--on-accent);
+    transform: scaleX(0);
+    transition: transform var(--dur-3) var(--ease-out);
+  }
+
+  @include hover {
+    color: var(--ink-900);
+
+    &::after {
+      transform: scaleX(1);
+    }
+  }
+
+  &.is-active {
+    color: var(--ink-900);
+
+    &::after {
+      transform: scaleX(1);
+    }
+  }
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.book {
+  @include until($bp-sm) {
+    display: none;
+  }
+}
+
+.burger {
+  @include from($bp-lg) {
+    display: none;
+  }
+}
+
+.bell {
+  position: relative;
+}
+
+.bell__count {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.15rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding-inline: 0.25rem;
+  border-radius: var(--r-pill);
+  background: var(--laterite-600);
+  color: var(--on-accent);
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.15rem;
+  text-align: center;
+  animation: pop-in var(--dur-3) var(--ease-spring);
+}
+
+.account {
+  position: relative;
+}
+
+.account__trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  transition: background-color var(--dur-2);
+
+  @include from($bp-md) {
+    padding-right: 0.7rem;
+  }
+
+  @include hover {
+    background: var(--sand-200);
+  }
+}
+
+.account__name {
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+}
+
+.menu {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  min-width: 14.5rem;
+  padding: 0.4rem;
+  background: var(--sand-0);
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-hard-sm), var(--shadow-md);
+  transform-origin: top right;
+  animation: menu-in var(--dur-2) var(--ease-out);
+
+  hr {
+    margin: 0.35rem 0;
+  }
+}
+
+.menu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border-radius: var(--r-sm);
+  font-weight: 600;
+  text-align: left;
+
+  app-icon {
+    color: var(--ink-500);
+  }
+
+  &:hover {
+    background: var(--marigold-50);
+  }
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+}
+
+// --- mobile drawer --------------------------------------------------------------
+
+.drawer-scrim {
+  position: fixed;
+  inset: var(--header-h) 0 0;
+  z-index: calc(var(--z-header) - 2);
+  background: rgb(31 26 20 / 0.45);
+  animation: fade-in var(--dur-2) var(--ease-out);
+}
+
+.drawer {
+  position: fixed;
+  z-index: calc(var(--z-header) - 1);
+  top: var(--header-h);
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.75rem var(--gutter) 1.25rem;
+  background: var(--sand-50);
+  border-bottom: var(--stroke) solid var(--ink-900);
+  box-shadow: var(--shadow-lg);
+  animation: drawer-in var(--dur-3) var(--ease-out);
+
+  @include from($bp-lg) {
+    display: none;
+  }
+}
+
+.drawer__link {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 0.5rem;
+  border-bottom: 1px solid var(--sand-200);
+  font-size: 1.15rem;
+  font-weight: 650;
+
+  app-icon {
+    color: var(--laterite-600);
+  }
+
+  // Links cascade in one after another.
+  animation: rise-in var(--dur-3) var(--ease-out) both;
+
+  @for $i from 1 through 6 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 35}ms;
+    }
+  }
+}
+
+.drawer__foot {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 1rem;
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+// --- footer -----------------------------------------------------------------------
+
+.site-footer {
+  margin-top: auto;
+}
+
+.site-footer__body {
+  background:
+    radial-gradient(40rem 16rem at 80% 0%, rgb(242 168 29 / 0.12), transparent 70%),
+    var(--ink-900);
+  color: var(--sand-200);
+  padding-block: clamp(2rem, 1.5rem + 2vw, 3.5rem) 1.5rem;
+}
+
+.footer-grid {
+  display: grid;
+  gap: 2rem 1.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  @include from($bp-md) {
+    grid-template-columns: 1.6fr repeat(3, 1fr);
+  }
+
+  h2 {
+    margin-bottom: 0.8rem;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    font-stretch: 112%;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--marigold-300);
+  }
+
+  ul {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  a,
+  button {
+    color: var(--sand-100);
+    transition: color var(--dur-2);
+    text-align: left;
+
+    &:hover {
+      color: var(--marigold-300);
+    }
+  }
+
+  :focus-visible {
+    outline-color: var(--marigold-300);
+    box-shadow: none;
+  }
+}
+
+.footer-brand {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.9rem;
+  align-content: start;
+  color: var(--sand-50);
+
+  @include from($bp-md) {
+    grid-column: auto;
+    padding-right: 2rem;
+  }
+
+  p {
+    max-width: 24rem;
+    color: var(--sand-300);
+  }
+}
+
+.contact a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.footer-base {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgb(253 248 238 / 0.14);
+  font-size: var(--fs-sm);
+  color: var(--sand-400);
+}
+
+
+// A giant wordmark across the foot of the page.
+.footer-word {
+  margin-top: 2.5rem;
+  font-size: clamp(4rem, 2rem + 14vw, 13rem);
+  font-weight: 800;
+  font-stretch: 120%;
+  letter-spacing: -0.06em;
+  line-height: 0.8;
+  color: transparent;
+  -webkit-text-stroke: 1px rgb(253 248 238 / 0.18);
+  user-select: none;
+  white-space: nowrap;
+  overflow: hidden;
+}

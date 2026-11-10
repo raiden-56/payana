@@ -1,0 +1,166 @@
+<section class="page">
+  <div class="container">
+    <a routerLink="/explore" class="back"><app-icon name="arrow-left" [size]="16" /> All drivers</a>
+
+    @switch (driver.status()) {
+      @case ('error') {
+        <app-state-panel [error]="driver.error()" (retry)="driver.load()">
+          <a routerLink="/explore" class="btn btn--outline btn--sm">Browse drivers</a>
+        </app-state-panel>
+      }
+      @case ('ready') {
+        @let d = driver.data()!;
+        <div class="layout">
+          <!-- ===== Main column ===== -->
+          <div class="main">
+            <header class="hero card card--poster spin-wheels">
+              <div class="hero__art">
+                <span class="hero__sun" aria-hidden="true"></span>
+                <app-vehicle-art [icon]="d.vehicle.icon" />
+              </div>
+              <div class="hero__body">
+                <app-avatar [name]="d.displayName" [photoUrl]="d.photoUrl" [size]="76" />
+                <div class="hero__who">
+                  <h1>{{ d.displayName }}</h1>
+                  <div class="hero__tags">
+                    @if (d.isVerified) {
+                      <span class="badge badge--success"><app-icon name="shield-check" [size]="13" /> Verified</span>
+                    }
+                    @if (d.isFeatured) {
+                      <span class="badge badge--accent" title="This driver paid for a featured placement"><app-icon name="sparkle" [size]="12" /> Featured</span>
+                    }
+                    @if (d.planBadge) {
+                      <span class="badge badge--outline">{{ d.planBadge }}</span>
+                    }
+                  </div>
+                  <p class="hero__meta">
+                    <app-rating [rating]="d.rating" />
+                    <span aria-hidden="true">·</span> {{ d.completedTrips }} trips
+                    <span aria-hidden="true">·</span> on {{ brand }} since {{ d.memberSince | dateOnly }}
+                  </p>
+                  <p class="hero__avail" [class.is-live]="availability().live">
+                    <span class="dot" [class.dot--live]="availability().live"></span> {{ availability().text }}
+                  </p>
+                </div>
+              </div>
+            </header>
+
+            @if (d.bio) {
+              <section class="block" appReveal>
+                <h2>About</h2>
+                <p class="bio">{{ d.bio }}</p>
+              </section>
+            }
+
+            <section class="block" appReveal>
+              <h2>Good to know</h2>
+              <dl class="facts">
+                <div><dt><app-icon name="car" [size]="16" /> Works as</dt><dd>{{ partnerLabel() }}</dd></div>
+                @if (d.yearsExperience) {
+                  <div><dt><app-icon name="flag" [size]="16" /> Experience</dt><dd>{{ d.yearsExperience }} years driving</dd></div>
+                }
+                <div><dt><app-icon name="globe" [size]="16" /> Speaks</dt><dd>{{ d.languages.join(', ') || 'Not specified' }}</dd></div>
+                <div><dt><app-icon name="map" [size]="16" /> Serves</dt><dd>{{ areaNames().join(', ') }}</dd></div>
+                <div><dt><app-icon name="clock" [size]="16" /> Usual hours</dt><dd>{{ hours(d.operatingHours) }}</dd></div>
+                <div><dt><app-icon name="alert-circle" [size]="16" /> Cancellations by driver</dt><dd>{{ cancellationText() }}</dd></div>
+              </dl>
+            </section>
+
+            <section class="block" appReveal>
+              <h2>{{ d.vehicles.length > 1 ? 'Vehicles' : 'Vehicle' }}</h2>
+              <ul class="vehicles">
+                @for (v of d.vehicles; track v.id) {
+                  <li class="vehicle">
+                    <app-vehicle-art [icon]="v.icon" />
+                    <div>
+                      <h3>{{ v.make }} {{ v.model }}</h3>
+                      <p class="muted">{{ v.categoryName }}@if (v.color) { · {{ v.color }} }</p>
+                      <ul class="pills">
+                        <li><app-icon name="users" [size]="14" /> {{ v.seats }} seats</li>
+                        <li><app-icon name="luggage" [size]="14" /> {{ v.luggageCapacity }} {{ v.luggageCapacity === 1 ? 'bag' : 'bags' }}</li>
+                        <li><app-icon name="snowflake" [size]="14" /> {{ v.hasAc ? 'AC' : 'Non-AC' }}</li>
+                        <li class="tabular">{{ v.registrationMasked }}</li>
+                      </ul>
+                    </div>
+                  </li>
+                }
+              </ul>
+              <p class="subtle">The full registration number is shown in your booking once you accept a quote.</p>
+            </section>
+
+            @if (showReviews) {
+              <section class="block" appReveal id="reviews">
+                <h2>What riders said</h2>
+                @switch (reviews.status()) {
+                  @case ('error') {
+                    <app-state-panel [error]="reviews.error()" (retry)="reviews.load()" />
+                  }
+                  @case ('ready') {
+                    @if (reviews.data()!.items.length) {
+                      <ul class="reviews">
+                        @for (r of reviews.data()!.items; track r.id) {
+                          <li class="review">
+                            <div class="review__head">
+                              <span class="stars" [attr.aria-label]="r.rating + ' out of 5'">
+                                @for (on of stars(r.rating); track $index) {
+                                  <app-icon name="star" [size]="15" [filled]="on" [class.off]="!on" />
+                                }
+                              </span>
+                              <strong>{{ r.authorName }}</strong>
+                              <span class="subtle">{{ r.createdAt | relativeTime }}</span>
+                            </div>
+                            @if (r.comment) {
+                              <p>{{ r.comment }}</p>
+                            }
+                            @if (r.reply) {
+                              <blockquote class="review__reply">
+                                <strong>Reply from {{ d.displayName }}</strong>
+                                <p>{{ r.reply.text }}</p>
+                              </blockquote>
+                            }
+                          </li>
+                        }
+                      </ul>
+                      <app-pager [page]="reviews.data()!.page" [pageSize]="reviews.data()!.pageSize" [total]="reviews.data()!.total" (pageChange)="goToReviewPage($event)" />
+                    } @else {
+                      <p class="muted">No reviews yet. Reviews come only from riders who completed a trip with this driver.</p>
+                    }
+                  }
+                  @default {
+                    <span class="skeleton" style="height: 7rem"></span>
+                  }
+                }
+              </section>
+            }
+          </div>
+
+          <!-- ===== Sticky rate card ===== -->
+          <aside class="side">
+            <div class="rates card card--poster">
+              <h2>Indicative rates</h2>
+              <dl class="rate-list">
+                <div><dt>Base fare</dt><dd>{{ d.rates.baseFare | money }}</dd></div>
+                <div><dt>Per km</dt><dd>{{ d.rates.perKm | money }}</dd></div>
+                <div><dt>Waiting, per hour</dt><dd>{{ d.rates.perHourWaiting | money }}</dd></div>
+                @if (d.rates.fullDay) {
+                  <div><dt>Full day <span class="subtle">(8 h / 80 km)</span></dt><dd>{{ d.rates.fullDay | money }}</dd></div>
+                }
+              </dl>
+              <p class="subtle">A guide, not a fare. {{ d.displayName }} will quote the exact price for your trip.</p>
+              <a class="btn btn--accent btn--lg btn--block" routerLink="/request" [queryParams]="{ driver: d.driverId, category: d.vehicle.categoryCode }">
+                Ask {{ d.displayName.split(' ')[0] }} for a quote <app-icon class="btn__arrow" name="arrow-right" [size]="18" />
+              </a>
+              <a class="btn btn--ghost btn--block" routerLink="/request" [queryParams]="{ category: d.vehicle.categoryCode }">or ask every driver nearby</a>
+            </div>
+          </aside>
+        </div>
+      }
+      @default {
+        <div class="stack" aria-hidden="true">
+          <span class="skeleton" style="height: 18rem; border-radius: var(--r-lg)"></span>
+          <span class="skeleton" style="height: 10rem; border-radius: var(--r-lg)"></span>
+        </div>
+      }
+    }
+  </div>
+</section>

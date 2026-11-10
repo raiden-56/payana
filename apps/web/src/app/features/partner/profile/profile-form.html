@@ -1,0 +1,223 @@
+<form class="pf" (submit)="$event.preventDefault(); save()" novalidate>
+  <!-- ===== Kind of partner ===== -->
+  <fieldset class="pf__group" [attr.aria-describedby]="errors.message('partnerType') ? 'pf-type-err' : null">
+    <legend>How do you work?</legend>
+    <div class="types" role="radiogroup" aria-label="How do you work?">
+      @for (type of partnerTypes; track type.value) {
+        <button
+          type="button"
+          role="radio"
+          class="type"
+          [class.is-selected]="partnerType() === type.value"
+          [attr.aria-checked]="partnerType() === type.value"
+          [disabled]="typeLocked() && partnerType() !== type.value"
+          (click)="chooseType(type.value)"
+        >
+          <span class="type__icon"><app-icon [name]="type.icon" [size]="20" /></span>
+          <span class="type__text">
+            <strong>{{ type.label }}</strong>
+            <small>{{ type.help }}</small>
+          </span>
+          <span class="type__tick" aria-hidden="true"><app-icon name="check" [size]="14" /></span>
+        </button>
+      }
+    </div>
+    @if (typeLocked()) {
+      <p class="field__hint"><app-icon name="lock" [size]="13" /> This cannot be changed once verification has started. Contact support if it is wrong.</p>
+    }
+    @if (errors.message('partnerType'); as message) {
+      <p class="field__error" id="pf-type-err"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+    }
+  </fieldset>
+
+  <!-- ===== About you ===== -->
+  <fieldset class="pf__group">
+    <legend>About you</legend>
+    <div class="form-grid">
+      <div class="field">
+        <label class="field__label" for="pf-name">Name shown to customers</label>
+        <input
+          id="pf-name"
+          class="input"
+          type="text"
+          autocomplete="name"
+          maxlength="60"
+          [formControl]="form.controls.displayName"
+          [attr.aria-invalid]="errors.invalid('displayName')"
+          aria-describedby="pf-name-help"
+        />
+        @if (errors.message('displayName'); as message) {
+          <p class="field__error" id="pf-name-help"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        } @else {
+          <p class="field__hint" id="pf-name-help">Your own name, or the name your taxi service is known by.</p>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="pf-years">Years driving for hire <span class="field__optional">(optional)</span></label>
+        <input
+          id="pf-years"
+          class="input"
+          type="number"
+          inputmode="numeric"
+          min="0"
+          max="60"
+          [formControl]="form.controls.yearsExperience"
+          [attr.aria-invalid]="errors.invalid('yearsExperience')"
+          aria-describedby="pf-years-help"
+        />
+        @if (errors.message('yearsExperience'); as message) {
+          <p class="field__error" id="pf-years-help"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        } @else {
+          <p class="field__hint" id="pf-years-help">Shown on your profile.</p>
+        }
+      </div>
+
+      <div class="field span-2">
+        <label class="field__label" for="pf-bio">A few words about you <span class="field__optional">(optional)</span></label>
+        <textarea
+          id="pf-bio"
+          class="textarea"
+          rows="3"
+          [attr.maxlength]="bioMax"
+          [formControl]="form.controls.bio"
+          [attr.aria-invalid]="errors.invalid('bio')"
+          aria-describedby="pf-bio-help"
+          placeholder="For example: local to Gokarna, I know the beach roads and the temple timings."
+        ></textarea>
+        @if (errors.message('bio'); as message) {
+          <p class="field__error" id="pf-bio-help"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        } @else {
+          <p class="field__hint" id="pf-bio-help">{{ form.controls.bio.value.length }} / {{ bioMax }}</p>
+        }
+      </div>
+
+      <div class="field span-2">
+        <span class="field__label" id="pf-photo-label">Profile photo <span class="field__optional">(optional)</span></span>
+        <div class="photo">
+          <app-avatar [name]="form.controls.displayName.value" [photoUrl]="removePhoto() ? null : (profile()?.photoUrl ?? null)" [size]="64" />
+          <app-file-pick class="photo__pick" label="Choose a clear photo of your face" [types]="photoTypes" (picked)="onPhoto($event)" />
+          @if (profile()?.photoUrl && !photo() && !removePhoto()) {
+            <button type="button" class="btn btn--ghost btn--sm" (click)="removePhoto.set(true)">Remove photo</button>
+          }
+        </div>
+        @if (errors.message('photo'); as message) {
+          <p class="field__error"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        }
+      </div>
+    </div>
+  </fieldset>
+
+  <!-- ===== Languages ===== -->
+  <fieldset class="pf__group" [attr.aria-describedby]="errors.message('languages') ? 'pf-lang-err' : 'pf-lang-help'">
+    <legend>Languages you speak with customers</legend>
+    <div class="chips">
+      @for (language of languageChoices; track language) {
+        <button type="button" class="chip" [attr.aria-pressed]="languages().includes(language)" (click)="toggleLanguage(language)">
+          {{ language }}
+        </button>
+      }
+      @for (language of customLanguages(); track language) {
+        <button type="button" class="chip" aria-pressed="true" (click)="toggleLanguage(language)">
+          {{ language }} <app-icon name="close" [size]="13" />
+        </button>
+      }
+    </div>
+    <div class="other">
+      <label class="visually-hidden" for="pf-other-lang">Another language</label>
+      <input
+        id="pf-other-lang"
+        class="input"
+        type="text"
+        maxlength="30"
+        placeholder="Another language"
+        [value]="otherLanguage()"
+        (input)="otherLanguage.set($any($event.target).value)"
+        (keydown.enter)="$event.preventDefault(); addOtherLanguage()"
+      />
+      <button type="button" class="btn btn--outline btn--sm" (click)="addOtherLanguage()">Add</button>
+    </div>
+    @if (errors.message('languages'); as message) {
+      <p class="field__error" id="pf-lang-err" role="alert"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+    } @else {
+      <p class="field__hint" id="pf-lang-help">Up to {{ maxLanguages }}. Travellers often look for a driver who speaks their language.</p>
+    }
+  </fieldset>
+
+  <!-- ===== Service areas ===== -->
+  <fieldset class="pf__group" [attr.aria-describedby]="errors.message('serviceAreas') ? 'pf-area-err' : 'pf-area-help'">
+    <legend>Towns you work in</legend>
+    @switch (store.regions.status()) {
+      @case ('error') {
+        <p class="notice notice--danger" role="alert">
+          <app-icon name="alert-circle" [size]="18" />
+          <span>The list of towns could not be loaded. <button type="button" class="link" (click)="store.regions.load()">Try again</button></span>
+        </p>
+      }
+      @case ('ready') {
+        <div class="chips">
+          @for (region of regions(); track region.id) {
+            <button type="button" class="chip" [attr.aria-pressed]="areas().includes(region.slug)" (click)="toggleArea(region.slug)">
+              {{ region.name }}
+              @if (region.status === 'coming_soon') {
+                <span class="chip__soon">soon</span>
+              }
+            </button>
+          }
+        </div>
+      }
+      @default {
+        <span class="skeleton" style="height: 2.4rem; width: 60%"></span>
+      }
+    }
+    @if (errors.message('serviceAreas'); as message) {
+      <p class="field__error" id="pf-area-err" role="alert"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+    } @else {
+      <p class="field__hint" id="pf-area-help">Pick every town you take trips from. Towns marked “soon” are not open to customers yet — you can register early.</p>
+    }
+  </fieldset>
+
+  <!-- ===== Hours ===== -->
+  <fieldset class="pf__group" [attr.aria-describedby]="errors.message('operatingHours') ? 'pf-hours-err' : null">
+    <legend>Working hours</legend>
+    <label class="switch">
+      <input type="checkbox" role="switch" [checked]="setHours()" (change)="setHours.set($any($event.target).checked); errors.clearField('operatingHours')" />
+      <span></span>
+      I work set hours
+    </label>
+    @if (setHours()) {
+      <div class="hours">
+        <div class="chips" role="group" aria-label="Working days">
+          @for (day of weekdays; track day; let i = $index) {
+            <button type="button" class="chip chip--day" [attr.aria-pressed]="days().includes(i)" (click)="toggleDay(i)">{{ day }}</button>
+          }
+        </div>
+        <div class="hours__times">
+          <div class="field">
+            <label class="field__label" for="pf-from">From</label>
+            <input id="pf-from" class="input" type="time" [formControl]="form.controls.hoursFrom" />
+          </div>
+          <div class="field">
+            <label class="field__label" for="pf-to">Until</label>
+            <input id="pf-to" class="input" type="time" [formControl]="form.controls.hoursTo" />
+          </div>
+        </div>
+      </div>
+    } @else {
+      <p class="field__hint">Left off, customers see no fixed hours — you decide trip by trip with your status.</p>
+    }
+    @if (errors.message('operatingHours'); as message) {
+      <p class="field__error" id="pf-hours-err" role="alert"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+    }
+  </fieldset>
+
+  @if (problem()) {
+    <p class="notice notice--danger" role="alert"><app-icon name="alert-circle" [size]="18" /> <span>{{ problem() }}</span></p>
+  }
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn--accent btn--lg" [class.is-loading]="busy()" [disabled]="busy()">
+      {{ submitLabel() }} <app-icon class="btn__arrow" name="arrow-right" [size]="18" />
+    </button>
+  </div>
+</form>

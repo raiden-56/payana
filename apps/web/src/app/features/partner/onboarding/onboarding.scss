@@ -1,0 +1,179 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+  max-width: 56rem;
+}
+
+.steps {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: var(--s-5);
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  li {
+    flex: 1 0 auto;
+  }
+}
+
+.steps__item {
+  // Contains the visually-hidden labels, so they scroll with the strip instead of widening the page.
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.4rem 0.9rem 0.4rem 0.45rem;
+  border: var(--stroke) solid var(--color-border);
+  border-radius: var(--r-pill);
+  background: var(--sand-0);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--ink-700);
+  white-space: nowrap;
+  transition:
+    border-color var(--dur-2),
+    background-color var(--dur-2),
+    color var(--dur-2);
+
+  &:disabled {
+    opacity: 0.5;
+  }
+
+  &.is-done .steps__num {
+    background: var(--palm-600);
+    border-color: var(--palm-600);
+    color: var(--sand-0);
+  }
+
+  &.is-current {
+    border-color: var(--ink-900);
+    background: var(--marigold-100);
+    color: var(--ink-900);
+    box-shadow: var(--shadow-hard-sm);
+  }
+}
+
+.steps__num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border: var(--stroke) solid var(--ink-400);
+  border-radius: 50%;
+  background: var(--sand-0);
+  font-weight: 800;
+}
+
+// On narrow phones only the current step shows its name.
+@include until($bp-sm) {
+  .steps__item:not(.is-current) .steps__label {
+    @include visually-hidden;
+  }
+
+  .steps__item:not(.is-current) {
+    padding-right: 0.45rem;
+  }
+}
+
+.step {
+  display: grid;
+  gap: var(--s-5);
+  animation: rise-in var(--dur-3) var(--ease-out);
+}
+
+.step__head {
+  display: grid;
+  gap: 0.3rem;
+
+  h2 {
+    font-size: 1.45rem;
+  }
+
+  p {
+    color: var(--color-text-muted);
+  }
+}
+
+.slots {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.slots__title {
+  font-size: 1.05rem;
+  margin-bottom: -0.5rem;
+}
+
+.rows {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.75rem 0.9rem;
+  border: var(--stroke) solid var(--color-border);
+  border-radius: var(--r-md);
+
+  div {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    line-height: 1.3;
+  }
+
+  span {
+    font-size: var(--fs-sm);
+    color: var(--color-text-muted);
+  }
+}
+
+.checklist {
+  display: grid;
+  gap: 0.5rem;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--r-md);
+    background: var(--sand-100);
+    font-weight: 600;
+
+    .link {
+      margin-left: auto;
+    }
+
+    &.is-done .checklist__mark {
+      background: var(--palm-600);
+      color: var(--sand-0);
+    }
+  }
+}
+
+.checklist__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  background: var(--sand-300);
+  color: var(--ink-700);
+}
+
+.form-actions {
+  margin-top: 0;
+}

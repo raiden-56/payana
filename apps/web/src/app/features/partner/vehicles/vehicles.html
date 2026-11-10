@@ -1,0 +1,92 @@
+<app-partner-head heading="Vehicles" lead="What you list on the marketplace. Each vehicle needs its own documents and your rates before it appears in search.">
+  <button type="button" class="btn btn--accent" (click)="dialog.set({ kind: 'add' })"><app-icon name="plus" [size]="17" /> Add a vehicle</button>
+</app-partner-head>
+
+@switch (store.vehicles.status()) {
+  @case ('error') {
+    <app-state-panel [error]="store.vehicles.error()" (retry)="store.vehicles.load()" />
+  }
+  @case ('ready') {
+    <ul class="grid grid--auto fleet" style="--min: 20rem">
+      @for (v of store.vehicles.data(); track v.id; let i = $index) {
+        <li class="veh spin-wheels" appReveal [revealDelay]="i * 60">
+          <div class="veh__art"><app-vehicle-art [icon]="icon(v)" /></div>
+          <div class="veh__body">
+            <header>
+              <h2>{{ v.make }} {{ v.model }}</h2>
+              <p class="veh__plate tabular">{{ plate(v) }}</p>
+            </header>
+            <div class="cluster" style="--cluster-gap: 0.35rem">
+              <app-status-badge kind="verification" [value]="v.verificationStatus" />
+              <app-status-badge kind="listing" [value]="v.listingStatus" />
+            </div>
+            <ul class="veh__facts">
+              <li><app-icon name="car" [size]="15" /> {{ categoryName(v) }}</li>
+              <li><app-icon name="users" [size]="15" /> {{ v.seats }} {{ v.seats === 1 ? 'seat' : 'seats' }}</li>
+              @if (v.luggageCapacity) { <li><app-icon name="luggage" [size]="15" /> {{ v.luggageCapacity }} {{ v.luggageCapacity === 1 ? 'bag' : 'bags' }}</li> }
+              @if (v.hasAc) { <li><app-icon name="snowflake" [size]="15" /> AC</li> }
+            </ul>
+
+            <dl class="veh__status">
+              <div>
+                <dt>Rates</dt>
+                @if (v.rates; as rates) {
+                  <dd>{{ rates.perKm | money }}/km · base {{ rates.baseFare | money }}</dd>
+                } @else {
+                  <dd class="veh__todo"><app-icon name="alert" [size]="14" /> Not set yet</dd>
+                }
+              </div>
+              <div>
+                <dt>Documents</dt>
+                <dd [class.veh__todo]="docsReady(v) < docsTotal">
+                  @if (docsReady(v) < docsTotal) { <app-icon name="alert" [size]="14" /> }
+                  {{ docsReady(v) }} of {{ docsTotal }} approved
+                </dd>
+              </div>
+            </dl>
+
+            <div class="veh__actions">
+              <button type="button" class="btn btn--outline btn--sm" (click)="dialog.set({ kind: 'rates', vehicle: v })"><app-icon name="rupee" [size]="15" /> Rates</button>
+              <a class="btn btn--outline btn--sm" routerLink="/partner/documents" [fragment]="'vehicle-' + v.id"><app-icon name="document" [size]="15" /> Documents</a>
+              <button type="button" class="btn btn--ghost btn--sm" (click)="dialog.set({ kind: 'edit', vehicle: v })"><app-icon name="edit" [size]="15" /> Edit</button>
+              <button type="button" class="btn btn--ghost btn--sm veh__remove" (click)="dialog.set({ kind: 'remove', vehicle: v })" [attr.aria-label]="'Remove ' + v.make + ' ' + v.model"><app-icon name="trash" [size]="15" /></button>
+            </div>
+          </div>
+        </li>
+      } @empty {
+        <li style="grid-column: 1 / -1">
+          <app-state-panel kind="empty" title="No vehicles yet" message="Add the vehicle you take trips in. If you drive someone else’s vehicle, its owner lists it and authorises you from their Team page.">
+            <button type="button" class="btn btn--dark btn--sm" (click)="dialog.set({ kind: 'add' })">Add a vehicle</button>
+          </app-state-panel>
+        </li>
+      }
+    </ul>
+  }
+  @default {
+    <div class="grid grid--auto" style="--min: 20rem" aria-hidden="true">
+      @for (n of [1, 2]; track n) { <span class="skeleton" style="height: 24rem; border-radius: var(--r-lg)"></span> }
+    </div>
+  }
+}
+
+<app-modal [title]="editing() ? 'Edit vehicle' : 'Add a vehicle'" [open]="formOpen()" (closed)="close()">
+  @if (formOpen()) {
+    <app-vehicle-form [vehicle]="editing()" [cancellable]="true" (saved)="close()" (cancelled)="close()" />
+  }
+</app-modal>
+
+<app-modal [title]="rating() ? 'Rates · ' + rating()!.make + ' ' + rating()!.model : 'Rates'" [open]="!!rating()" (closed)="close()">
+  @if (rating(); as vehicle) {
+    <app-rates-editor [vehicle]="vehicle" (saved)="close()" (cancelled)="close()" />
+  }
+</app-modal>
+
+<app-modal title="Remove this vehicle?" [open]="!!removing()" (closed)="close()">
+  @if (removing(); as vehicle) {
+    <p><strong>{{ vehicle.make }} {{ vehicle.model }} · {{ plate(vehicle) }}</strong> will be taken out of search, and any driver you authorised for it loses that authorisation. A vehicle with an active booking cannot be removed.</p>
+  }
+  <ng-container modalActions>
+    <button type="button" class="btn btn--ghost" (click)="close()">Keep it</button>
+    <button type="button" class="btn btn--danger" [class.is-loading]="busy()" [disabled]="busy()" (click)="remove()">Remove vehicle</button>
+  </ng-container>
+</app-modal>

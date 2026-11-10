@@ -1,0 +1,433 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+// ===== Hero =====================================================================
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  background: var(--palm-900);
+  color: var(--sand-50);
+  overflow: clip;
+}
+
+.hero__photo {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.4;
+
+  &::after {
+    background: linear-gradient(90deg, var(--palm-900) 30%, rgb(8 19 14 / 0.55));
+  }
+}
+
+.hero__grid {
+  display: grid;
+  gap: var(--s-8);
+  align-items: center;
+  padding-block: clamp(2.5rem, 2rem + 4vw, 5.5rem);
+
+  @include from($bp-md) {
+    grid-template-columns: 1.1fr 0.9fr;
+  }
+}
+
+.hero__copy {
+  display: grid;
+  gap: 1.1rem;
+  animation: rise-in var(--dur-4) var(--ease-out) both;
+
+  .eyebrow {
+    color: var(--marigold-300);
+  }
+
+  h1 {
+    font-size: clamp(2.4rem, 1.6rem + 3.8vw, 4.4rem);
+    font-weight: 800;
+    font-stretch: 110%;
+    line-height: 1;
+    letter-spacing: -0.035em;
+
+    em {
+      font-style: normal;
+      color: var(--marigold-500);
+    }
+  }
+
+  > p {
+    max-width: 34rem;
+    font-size: var(--fs-lg);
+    color: var(--sand-200);
+  }
+
+  .notice {
+    color: var(--ink-900);
+  }
+}
+
+.hero__art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 16rem;
+
+  app-vehicle-art {
+    position: relative;
+    width: min(27rem, 92%);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-lg);
+    animation: rise-in var(--dur-4) var(--ease-out) 200ms both;
+  }
+}
+
+.hero__sun {
+  display: none;
+  position: absolute;
+  width: min(20rem, 70%);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--marigold-500);
+  color: var(--on-accent);
+  box-shadow:
+    0 0 0 1.8rem rgb(242 168 29 / 0.16),
+    0 0 0 4rem rgb(242 168 29 / 0.08);
+}
+
+// A strip of road with moving lane marks under the auto.
+.hero__road {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1.2rem;
+  height: 5px;
+  border-radius: 5px;
+  background: repeating-linear-gradient(90deg, var(--marigold-300) 0 26px, transparent 26px 52px);
+  animation: road 0.9s linear infinite;
+  opacity: 0.8;
+}
+
+@keyframes road {
+  to {
+    background-position-x: -52px;
+  }
+}
+
+// ===== Why ======================================================================
+
+.why li {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  padding: 1.5rem 1.35rem;
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: var(--r-lg);
+  background: var(--sand-0);
+  transition:
+    transform var(--dur-3) var(--ease-out),
+    box-shadow var(--dur-3) var(--ease-out);
+
+  @include hover {
+    transform: translate(-3px, -3px);
+    box-shadow: var(--shadow-hard);
+  }
+
+  app-icon {
+    justify-self: start;
+    padding: 0.7rem;
+    border: var(--stroke) solid var(--ink-900);
+    border-radius: 50%;
+    background: var(--marigold-500);
+  color: var(--on-accent);
+    margin-bottom: 0.35rem;
+  }
+
+  h3 {
+    font-size: 1.3rem;
+  }
+
+  p {
+    color: var(--color-text-muted);
+  }
+}
+
+// ===== Steps ====================================================================
+
+.steps {
+  position: relative;
+  display: grid;
+  gap: 2.4rem var(--s-5);
+
+  @include from($bp-md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @include from($bp-lg) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+
+    // The line joining the four numbers draws across as the section scrolls in.
+    &::before {
+      content: '';
+      position: absolute;
+      top: -0.1rem;
+      left: 4%;
+      right: 4%;
+      height: 3px;
+      background: var(--laterite-600);
+  color: var(--on-accent);
+      transform-origin: left;
+      transform: scaleX(clamp(0, (var(--p, 1) - 0.18) * 2.4, 1));
+    }
+  }
+}
+
+.step {
+  position: relative;
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+  padding: 2rem 1.25rem 1.4rem;
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: var(--r-lg);
+  background: var(--sand-0);
+  box-shadow: var(--shadow-hard-sm);
+
+  app-icon {
+    color: var(--laterite-600);
+  }
+
+  h3 {
+    font-size: 1.2rem;
+  }
+
+  p {
+    font-size: var(--fs-sm);
+    color: var(--color-text-muted);
+  }
+}
+
+.step__n {
+  position: absolute;
+  top: -1.4rem;
+  left: 1.1rem;
+  display: grid;
+  place-items: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: 50%;
+  background: var(--marigold-500);
+  color: var(--on-accent);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+// ===== Documents ================================================================
+
+.docs {
+  display: grid;
+  gap: var(--s-8);
+  align-items: center;
+
+  @include from($bp-md) {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-12);
+  }
+
+  > div {
+    display: grid;
+    gap: 0.9rem;
+  }
+}
+
+.docs__list {
+  display: grid;
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: var(--r-lg);
+  background: var(--sand-0);
+  box-shadow: var(--shadow-hard);
+  overflow: hidden;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.9rem 1.2rem;
+    border-bottom: 1px dashed var(--color-border);
+    font-weight: 600;
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  app-icon {
+    flex: none;
+    padding: 0.2rem;
+    border-radius: 50%;
+    background: var(--palm-100);
+    color: var(--palm-700);
+  }
+}
+
+// ===== Plans ====================================================================
+
+.plans {
+  display: grid;
+  gap: var(--s-5);
+  align-items: stretch;
+
+  @include from($bp-md) {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  }
+}
+
+.plan {
+  position: relative;
+  display: grid;
+  gap: 0.8rem;
+  align-content: start;
+  grid-template-rows: auto auto auto 1fr auto;
+  padding: 1.75rem 1.5rem 1.5rem;
+  border: var(--stroke) solid var(--color-border);
+  border-radius: var(--r-lg);
+  background: var(--sand-0);
+  transition:
+    transform var(--dur-3) var(--ease-out),
+    box-shadow var(--dur-3) var(--ease-out);
+
+  @include hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+  }
+
+  h3 {
+    font-size: 1.5rem;
+  }
+
+  &--pick {
+    border-color: var(--ink-900);
+    background: var(--marigold-50);
+    box-shadow: var(--shadow-hard);
+  }
+}
+
+.plan__flag {
+  position: absolute;
+  top: -0.8rem;
+  left: 1.4rem;
+  padding: 0.15rem 0.8rem;
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: var(--r-pill);
+  background: var(--laterite-600);
+  color: var(--on-accent);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.plan__desc {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.plan__price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+
+  strong {
+    font-size: 2.6rem;
+    font-weight: 800;
+    font-stretch: 110%;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  span {
+    color: var(--color-text-subtle);
+  }
+}
+
+.plan__list {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--color-border);
+  font-size: var(--fs-sm);
+
+  li {
+    display: flex;
+    gap: 0.55rem;
+    align-items: flex-start;
+  }
+
+  app-icon {
+    margin-top: 0.18rem;
+    color: var(--palm-600);
+  }
+}
+
+// ===== FAQ (same pattern as the home page) ========================================
+
+.faq {
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: var(--r-lg);
+  background: var(--sand-0);
+  overflow: hidden;
+
+  details {
+    border-bottom: 1px solid var(--sand-300);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+
+    &[open] {
+      background: var(--marigold-50);
+
+      summary app-icon {
+        transform: rotate(45deg);
+        background: var(--ink-900);
+        color: var(--marigold-300);
+      }
+    }
+  }
+
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.1rem 1.25rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    app-icon {
+      padding: 0.3rem;
+      border: var(--stroke) solid var(--ink-900);
+      border-radius: 50%;
+      transition:
+        transform var(--dur-3) var(--ease-spring),
+        background-color var(--dur-2),
+        color var(--dur-2);
+    }
+  }
+
+  p {
+    padding: 0 1.25rem 1.25rem;
+    max-width: 44rem;
+    color: var(--ink-700);
+  }
+}

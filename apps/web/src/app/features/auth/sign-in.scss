@@ -1,0 +1,175 @@
+@use 'mixins' as *;
+
+// Shared by the customer/driver sign-in and the administrator sign-in.
+
+:host {
+  display: block;
+}
+
+.auth {
+  display: grid;
+  min-height: calc(100dvh - var(--header-h));
+
+  @include from($bp-lg) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  }
+}
+
+.auth__form {
+  display: grid;
+  place-items: start center;
+  padding: clamp(1.5rem, 1rem + 4vw, 4.5rem) var(--gutter) 5rem;
+
+  @include from($bp-lg) {
+    place-items: center;
+    padding-bottom: 6rem;
+  }
+}
+
+.auth__card {
+  display: grid;
+  gap: 1.35rem;
+  width: min(27rem, 100%);
+  animation: rise-in var(--dur-4) var(--ease-out) both;
+
+  form {
+    display: grid;
+    gap: 1.1rem;
+  }
+}
+
+.auth__head {
+  display: grid;
+  gap: 0.6rem;
+
+  h1 {
+    font-size: clamp(2rem, 1.5rem + 2vw, 2.9rem);
+  }
+}
+
+.who {
+  width: 100%;
+
+  .segmented__item {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+// One wide field with spaced digits reads as six boxes without the fragility
+// of six separate inputs (paste, SMS autofill and screen readers all just work).
+.code {
+  height: 4rem;
+  font-size: 2rem;
+  font-weight: 750;
+  letter-spacing: 0.55em;
+  text-align: center;
+  padding-left: calc(0.9rem + 0.55em);
+  font-variant-numeric: tabular-nums;
+}
+
+.auth__legal,
+.auth__resend {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.auth__art {
+  display: none;
+  position: relative;
+  overflow: hidden;
+  place-items: center;
+  align-content: center;
+  gap: 2rem;
+  padding: 3rem;
+  background: var(--palm-800);
+  color: var(--sand-50);
+  border-left: var(--stroke) solid var(--ink-900);
+
+  @include from($bp-lg) {
+    display: grid;
+  }
+
+  app-vehicle-art {
+    position: relative;
+    width: min(26rem, 80%);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-lg);
+  }
+
+  p {
+    position: relative;
+    max-width: 16ch;
+    font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.4rem);
+    font-weight: 750;
+    font-stretch: 110%;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    text-align: center;
+  }
+}
+
+.auth__photo {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+
+  &::after {
+    background: linear-gradient(180deg, rgb(8 19 14 / 0.4), var(--palm-800) 85%);
+  }
+}
+
+.auth__sun {
+  display: none;
+  opacity: 0.9;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(24rem, 70%);
+  aspect-ratio: 1;
+  translate: -50% -62%;
+  border-radius: 50%;
+  background: var(--marigold-500);
+  color: var(--on-accent);
+  box-shadow:
+    0 0 0 2rem rgb(242 168 29 / 0.16),
+    0 0 0 4.5rem rgb(242 168 29 / 0.08);
+}
+
+// --- administrator sign-in extras ---
+
+.setup {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1rem 1.1rem;
+  border: var(--stroke) dashed var(--ink-400);
+  border-radius: var(--r-md);
+  background: var(--sand-0);
+
+  ol {
+    display: grid;
+    gap: 0.45rem;
+    padding-left: 1.2rem;
+    list-style: decimal;
+    font-size: var(--fs-sm);
+    color: var(--ink-700);
+  }
+}
+
+.setup__key {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+
+  code {
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--r-xs);
+    background: var(--sand-200);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    overflow-wrap: anywhere;
+  }
+}

@@ -1,0 +1,141 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+.case__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.9rem;
+}
+
+.case__bio {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--color-border);
+  font-size: var(--fs-sm);
+  color: var(--ink-700);
+  white-space: pre-wrap;
+}
+
+.docs {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr));
+}
+
+.vehicles {
+  display: grid;
+
+  li {
+    display: grid;
+    gap: 0.6rem 1rem;
+    align-items: center;
+    padding: 0.85rem 0;
+    border-bottom: 1px dashed var(--color-border);
+
+    &:first-child {
+      padding-top: 0;
+    }
+
+    &:last-child {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
+    @include from($bp-md) {
+      grid-template-columns: 1fr auto auto;
+    }
+
+    > div:first-child {
+      display: grid;
+      gap: 0.1rem;
+      min-width: 0;
+    }
+  }
+}
+
+.checklist {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--color-border);
+  font-size: var(--fs-sm);
+  color: var(--color-text-subtle);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    &.is-done {
+      color: var(--ink-900);
+      font-weight: 600;
+
+      app-icon {
+        color: var(--palm-600);
+      }
+    }
+  }
+}
+
+// The decision panel is the point of the page: keep it in view while scrolling documents.
+.decision {
+  border-color: var(--ink-900);
+  box-shadow: var(--shadow-hard-sm);
+
+  @include from($bp-lg) {
+    position: sticky;
+    top: 1rem;
+    z-index: 1;
+  }
+
+  .a-panel__body {
+    display: grid;
+    gap: 0.9rem;
+  }
+}
+
+.decision__options {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.decision__option {
+  padding: 0.7rem 0.8rem;
+  border: var(--stroke) solid var(--color-border);
+  border-radius: var(--r-sm);
+  transition:
+    border-color var(--dur-2),
+    background-color var(--dur-2);
+
+  &:hover {
+    border-color: var(--ink-500);
+  }
+
+  &.is-picked {
+    border-color: var(--ink-900);
+    background: var(--marigold-50);
+  }
+
+  span {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  small {
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
+  }
+}
+
+.reject {
+  display: grid;
+  gap: 1rem;
+}

@@ -1,0 +1,108 @@
+<app-partner-head
+  heading="Team"
+  lead="A vehicle may be driven on the marketplace only by its registered owner or by someone the owner has authorised. Owners invite drivers here; drivers accept here."
+/>
+
+@switch (store.authorizations.status()) {
+  @case ('error') {
+    <app-state-panel [error]="store.authorizations.error()" (retry)="store.authorizations.load()" />
+  }
+  @case ('ready') {
+    <div class="team">
+      <!-- ===== Invitations to me ===== -->
+      <section class="panel" aria-labelledby="team-received">
+        <header class="panel__head"><h2 id="team-received">Vehicles I may drive</h2></header>
+        <div class="panel__body">
+          <ul class="auths">
+            @for (a of received(); track a.id) {
+              <li class="auth">
+                <span class="auth__icon"><app-icon name="key" [size]="18" /></span>
+                <div class="auth__text">
+                  <strong>{{ a.vehicleLabel }}</strong>
+                  <span>Owner: {{ a.ownerName }}@if (a.validUntil) { · until {{ a.validUntil | dateOnly }} }</span>
+                </div>
+                <app-status-badge kind="authorization" [value]="a.status" />
+                <div class="auth__actions">
+                  @if (a.status === 'invited') {
+                    <button type="button" class="btn btn--accent btn--sm" [class.is-loading]="busyId() === a.id" [disabled]="!!busyId()" (click)="accept(a)">Accept</button>
+                  }
+                  @if (isOpen(a)) {
+                    <button type="button" class="btn btn--ghost btn--sm" [disabled]="!!busyId()" (click)="revoke(a)">{{ a.status === 'invited' ? 'Decline' : 'Give up' }}</button>
+                  }
+                </div>
+              </li>
+            } @empty {
+              <li class="auths__empty">No owner has authorised you yet. Ask the vehicle’s owner to invite your mobile number from their Team page.</li>
+            }
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== Authorisations I gave ===== -->
+      <section class="panel" aria-labelledby="team-given">
+        <header class="panel__head"><h2 id="team-given">Drivers of my vehicles</h2></header>
+        <div class="panel__body">
+          @if (vehicles().length) {
+            <form class="invite" (submit)="$event.preventDefault(); invite()" novalidate>
+              <div class="field">
+                <label class="field__label" for="tm-vehicle">Vehicle</label>
+                <select id="tm-vehicle" class="select" [formControl]="form.controls.vehicleId" [attr.aria-invalid]="errors.invalid('vehicleId')">
+                  <option value="" disabled>Choose…</option>
+                  @for (v of vehicles(); track v.id) { <option [value]="v.id">{{ v.label }}</option> }
+                </select>
+                @if (errors.message('vehicleId'); as m) { <p class="field__error"><app-icon name="alert-circle" [size]="14" /> {{ m }}</p> }
+              </div>
+              <div class="field">
+                <label class="field__label" for="tm-phone">Driver’s mobile number</label>
+                <div class="input-group">
+                  <span class="input-group__addon" aria-hidden="true">+91</span>
+                  <input id="tm-phone" class="input" type="tel" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="98765 43210" [formControl]="form.controls.driverPhone" [attr.aria-invalid]="errors.invalid('driverPhone')" aria-describedby="tm-phone-help" />
+                </div>
+                @if (errors.message('driverPhone'); as m) {
+                  <p class="field__error" id="tm-phone-help"><app-icon name="alert-circle" [size]="14" /> {{ m }}</p>
+                } @else {
+                  <p class="field__hint" id="tm-phone-help">The number they sign in with.</p>
+                }
+              </div>
+              <div class="field">
+                <label class="field__label" for="tm-until">Valid until <span class="field__optional">(optional)</span></label>
+                <input id="tm-until" class="input" type="date" [min]="today" [formControl]="form.controls.validUntil" [attr.aria-invalid]="errors.invalid('validUntil')" />
+                @if (errors.message('validUntil'); as m) { <p class="field__error"><app-icon name="alert-circle" [size]="14" /> {{ m }}</p> }
+              </div>
+              @if (problem()) {
+                <p class="notice notice--danger invite__wide" role="alert"><app-icon name="alert-circle" [size]="18" /> <span>{{ problem() }}</span></p>
+              }
+              <button type="submit" class="btn btn--dark invite__wide" [class.is-loading]="inviting()" [disabled]="inviting()"><app-icon name="send" [size]="16" /> Invite driver</button>
+            </form>
+          } @else {
+            <p class="notice"><app-icon name="info" [size]="18" /> <span>You have no vehicle of your own to authorise a driver for. <a class="link" routerLink="/partner/vehicles">Add a vehicle</a>.</span></p>
+          }
+
+          @if (given().length) {
+            <ul class="auths auths--given">
+              @for (a of given(); track a.id) {
+                <li class="auth">
+                  <span class="auth__icon"><app-icon name="user" [size]="18" /></span>
+                  <div class="auth__text">
+                    <strong>{{ a.driverName || a.driverPhoneMasked }}</strong>
+                    <span>{{ a.vehicleLabel }}@if (a.driverName) { · {{ a.driverPhoneMasked }} }@if (a.validUntil) { · until {{ a.validUntil | dateOnly }} }</span>
+                  </div>
+                  <app-status-badge kind="authorization" [value]="a.status" />
+                  <div class="auth__actions">
+                    @if (isOpen(a)) {
+                      <button type="button" class="btn btn--outline btn--sm" [class.is-loading]="busyId() === a.id" [disabled]="!!busyId()" (click)="revoke(a)">Revoke</button>
+                    }
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </section>
+    </div>
+  }
+  @default {
+    <span class="skeleton" style="height: 12rem; margin-bottom: 1rem; border-radius: var(--r-md)" aria-hidden="true"></span>
+    <span class="skeleton" style="height: 18rem; border-radius: var(--r-md)" aria-hidden="true"></span>
+  }
+}

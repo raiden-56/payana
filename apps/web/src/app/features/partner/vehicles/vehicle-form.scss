@@ -1,0 +1,78 @@
+@use 'mixins' as *;
+@use '../shared/forms' as f;
+
+:host {
+  display: block;
+}
+
+.vf {
+  @include f.shell;
+}
+
+.vf__group {
+  @include f.group;
+}
+
+.vf__top {
+  display: grid;
+  gap: 0.9rem;
+  align-items: center;
+
+  @include from($bp-sm) {
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+  }
+}
+
+// The artwork follows the chosen category, so the form shows what is being listed.
+.vf__art {
+  display: grid;
+  place-items: center;
+  padding: 0.5rem 1rem 0.2rem;
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: var(--r-md);
+  background:
+    radial-gradient(circle at 78% 28%, var(--marigold-300) 0 1.5rem, transparent 1.55rem),
+    var(--marigold-50);
+
+  app-vehicle-art {
+    width: 100%;
+    max-width: 9rem;
+  }
+}
+
+// Reads like a number plate.
+.vf__plate {
+  font-weight: 750;
+  font-stretch: 108%;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+
+  &::placeholder {
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+}
+
+.vf__ac .switch {
+  min-height: 2.9rem;
+}
+
+.thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+
+  li {
+    aspect-ratio: 4 / 3;
+    border: var(--stroke) solid var(--ink-900);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    background: var(--sand-200);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}

@@ -1,0 +1,148 @@
+<app-partner-head
+  [heading]="firstName() ? 'Namaskara, ' + firstName() : 'Partner dashboard'"
+  lead="Your status, new requests and the trips you have coming up."
+/>
+
+@switch (store.profile.status()) {
+  @case ('error') {
+    <app-state-panel [error]="store.profile.error()" (retry)="store.profile.load()" />
+  }
+  @case ('ready') {
+    <div class="dash">
+      <app-verification-banner class="dash__banner" [profile]="store.profile.data()" />
+
+      @if (store.hasProfile()) {
+        <app-availability-card class="dash__avail" appReveal />
+
+        <!-- ===== Performance ===== -->
+        <section class="panel dash__metrics" aria-labelledby="metrics-title" appReveal [revealDelay]="80">
+          <header class="panel__head">
+            <h2 id="metrics-title">How you are doing</h2>
+            <div class="segmented" role="radiogroup" aria-label="Period">
+              @for (days of periods; track days) {
+                <button type="button" role="radio" class="segmented__item" [attr.aria-checked]="period() === days" (click)="setPeriod(days)">
+                  {{ days }} days
+                </button>
+              }
+            </div>
+          </header>
+          <div class="panel__body">
+            @switch (metrics.status()) {
+              @case ('error') {
+                @if (metricsLocked()) {
+                  <app-state-panel kind="info" title="Your numbers come with a paid plan" message="Requests received, quotes sent, bookings won and profile views are shown here on plans that include the performance dashboard.">
+                    <a routerLink="/partner/plan" class="btn btn--dark btn--sm">See plans</a>
+                  </app-state-panel>
+                } @else {
+                  <app-state-panel [error]="metrics.error()" (retry)="metrics.load()" />
+                }
+              }
+              @case ('ready') {
+                <ul class="tiles" [class.is-refreshing]="metrics.refreshing()">
+                  @for (tile of tiles(); track tile.label) {
+                    <li class="tile" [title]="tile.help">
+                      <span class="tile__icon"><app-icon [name]="tile.icon" [size]="18" /></span>
+                      <span class="tile__value tabular" [appCountUp]="tile.value"></span>
+                      <span class="tile__label">{{ tile.label }}</span>
+                    </li>
+                  }
+                  <li class="tile tile--wide">
+                    <span class="tile__icon"><app-icon name="rupee" [size]="18" /></span>
+                    <span class="tile__value tabular">{{ metrics.data()!.completedFareTotal | money }}</span>
+                    <span class="tile__label">Fares on completed trips — paid to you directly by customers</span>
+                  </li>
+                  <li class="tile">
+                    <span class="tile__icon"><app-icon name="star" [size]="18" /></span>
+                    <span class="tile__value tabular">
+                      {{ metrics.data()!.rating.average === null ? '—' : metrics.data()!.rating.average!.toFixed(1) }}
+                    </span>
+                    <span class="tile__label">
+                      @if (metrics.data()!.rating.count) {
+                        Rating from {{ metrics.data()!.rating.count }} {{ metrics.data()!.rating.count === 1 ? 'review' : 'reviews' }}
+                      } @else {
+                        No reviews yet
+                      }
+                    </span>
+                  </li>
+                  <li class="tile">
+                    <span class="tile__icon"><app-icon name="close" [size]="18" /></span>
+                    <span class="tile__value tabular">{{ cancellation() === null ? '—' : cancellation() + '%' }}</span>
+                    <span class="tile__label">{{ cancellation() === null ? 'Cancellation rate — not enough trips yet' : 'Bookings you cancelled' }}</span>
+                  </li>
+                </ul>
+              }
+              @default {
+                <ul class="tiles" aria-hidden="true">
+                  @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+                    <li><span class="skeleton" style="height: 6.2rem; border-radius: var(--r-md)"></span></li>
+                  }
+                </ul>
+              }
+            }
+          </div>
+        </section>
+
+        <!-- ===== Newest requests ===== -->
+        <section class="dash__col" aria-labelledby="req-title" appReveal [revealDelay]="120">
+          <header class="spread dash__col-head">
+            <h2 id="req-title">New requests</h2>
+            <a class="link" routerLink="/partner/requests">See all</a>
+          </header>
+          @if (requestsLocked()) {
+            <app-state-panel kind="info" title="Requests open once you are verified" message="When your documents are approved, ride requests near you will appear here." />
+          } @else {
+            @switch (requests.status()) {
+              @case ('error') {
+                <app-state-panel [error]="requests.error()" (retry)="requests.load()" />
+              }
+              @case ('ready') {
+                @for (item of requests.data()!.items; track item.requestId) {
+                  <app-request-card [request]="item" />
+                } @empty {
+                  <app-state-panel kind="empty" title="No open requests right now" message="New requests appear here on their own. Being available, with your location on, puts you in front of nearby customers." />
+                }
+              }
+              @default {
+                @for (n of [1, 2]; track n) {
+                  <span class="skeleton" style="height: 12rem; border-radius: var(--r-lg)" aria-hidden="true"></span>
+                }
+              }
+            }
+          }
+        </section>
+
+        <!-- ===== Active bookings ===== -->
+        <section class="dash__col" aria-labelledby="bk-title" appReveal [revealDelay]="160">
+          <header class="spread dash__col-head">
+            <h2 id="bk-title">Your trips</h2>
+            <a class="link" routerLink="/partner/bookings">See all</a>
+          </header>
+          @switch (bookings.status()) {
+            @case ('error') {
+              <app-state-panel [error]="bookings.error()" (retry)="bookings.load()" />
+            }
+            @case ('ready') {
+              @for (booking of bookings.data()!.items; track booking.id) {
+                <app-booking-card [booking]="booking" />
+              } @empty {
+                <app-state-panel kind="empty" title="No trips booked yet" message="When a customer accepts one of your quotes, the booking shows up here." />
+              }
+            }
+            @default {
+              @for (n of [1, 2]; track n) {
+                <span class="skeleton" style="height: 11rem; border-radius: var(--r-lg)" aria-hidden="true"></span>
+              }
+            }
+          }
+        </section>
+      }
+    </div>
+  }
+  @default {
+    <div class="dash" aria-hidden="true">
+      <span class="skeleton dash__banner" style="height: 6.5rem; border-radius: var(--r-lg)"></span>
+      <span class="skeleton" style="height: 24rem; border-radius: var(--r-lg)"></span>
+      <span class="skeleton" style="height: 24rem; border-radius: var(--r-lg)"></span>
+    </div>
+  }
+}

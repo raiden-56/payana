@@ -1,0 +1,219 @@
+<section class="page">
+  <div class="container layout">
+    <form class="form" (submit)="$event.preventDefault(); submit()" novalidate>
+      <header class="page-head">
+        <span class="eyebrow">Book a ride</span>
+        <h1>Tell drivers what you need.</h1>
+        <p>They reply with their price. You are not committed to anything until you accept a quote.</p>
+      </header>
+
+      @if (targetDriver(); as d) {
+        <div class="notice notice--success" role="status">
+          <app-icon name="user" [size]="18" />
+          <span>
+            Asking <strong>{{ d.displayName }}</strong> only ({{ d.vehicle.categoryName }}).
+            <button type="button" class="link" (click)="askEveryone()">Ask every driver nearby instead</button>
+          </span>
+        </div>
+      }
+      @if (tourPackage(); as p) {
+        <div class="notice notice--success" role="status">
+          <app-icon name="compass" [size]="18" />
+          <span>Sightseeing tour: <strong>{{ p.title }}</strong> · about {{ p.durationHours }} hours, {{ p.stops.length }} stops.</span>
+        </div>
+      }
+
+      <!-- 1. kind of trip -->
+      <fieldset class="step">
+        <legend><span class="step__n">1</span> What kind of trip?</legend>
+        <div class="trip-types" role="radiogroup" aria-label="Kind of trip">
+          @for (o of tripOptions; track o.type) {
+            <button type="button" role="radio" class="trip-type" [attr.aria-checked]="tripType() === o.type" (click)="setTripType(o.type)">
+              <app-icon [name]="o.icon" [size]="22" />
+              <strong>{{ o.label }}</strong>
+              <span>{{ o.blurb }}</span>
+            </button>
+          }
+        </div>
+      </fieldset>
+
+      <!-- 2. where -->
+      <fieldset class="step">
+        <legend><span class="step__n">2</span> Where?</legend>
+        <div class="where">
+          <span class="where__line" aria-hidden="true"></span>
+          <div [attr.data-invalid]="!!show('pickup')">
+            <app-location-picker label="Pickup" placeholder="Beach, bus stand, your stay…" [(value)]="pickup" [invalid]="!!show('pickup')" [errorText]="show('pickup')" />
+          </div>
+          <div [attr.data-invalid]="!!show('drop')">
+            <app-location-picker
+              [label]="dropRequired() ? 'Drop' : 'Drop (optional — the tour sets the route)'"
+              placeholder="Where to?"
+              [allowCurrentLocation]="false"
+              [(value)]="drop"
+              [invalid]="!!show('drop')"
+              [errorText]="show('drop')"
+            />
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- 3. when -->
+      @if (!isImmediate()) {
+        <fieldset class="step">
+          <legend><span class="step__n">3</span> When?</legend>
+          <div class="form-grid">
+            <div class="field" [attr.data-invalid]="!!show('when')">
+              <label class="field__label" for="when">Pickup date and time</label>
+              <input id="when" class="input" type="datetime-local" [min]="minWhen()" [max]="maxWhen()" [value]="when()" (input)="when.set($any($event.target).value)" [attr.aria-invalid]="show('when') ? 'true' : null" aria-describedby="when-help" />
+              @if (show('when')) {
+                <p class="field__error" id="when-help"><app-icon name="alert-circle" [size]="14" /> {{ show('when') }}</p>
+              } @else {
+                <p class="field__hint" id="when-help">Your local time.</p>
+              }
+            </div>
+            @if (isOutstation()) {
+              <div class="field" [attr.data-invalid]="!!show('return')">
+                <label class="field__label" for="return">Return <span class="field__optional">(leave empty for one way)</span></label>
+                <input id="return" class="input" type="datetime-local" [min]="when() || minWhen()" [value]="returnWhen()" (input)="returnWhen.set($any($event.target).value)" [attr.aria-invalid]="show('return') ? 'true' : null" />
+                @if (show('return')) {
+                  <p class="field__error"><app-icon name="alert-circle" [size]="14" /> {{ show('return') }}</p>
+                }
+              </div>
+            }
+          </div>
+        </fieldset>
+      }
+
+      <!-- vehicle -->
+      <fieldset class="step" [attr.data-invalid]="!!show('category')">
+        <legend><span class="step__n">{{ isImmediate() ? 3 : 4 }}</span> Which vehicle?</legend>
+        @switch (categories.status()) {
+          @case ('error') {
+            <app-state-panel [error]="categories.error()" (retry)="categories.load()" />
+          }
+          @case ('ready') {
+            <div class="vehicles" role="radiogroup" aria-label="Type of vehicle">
+              @for (c of categories.data(); track c.id) {
+                <button type="button" role="radio" class="vehicle spin-wheels" [attr.aria-checked]="categoryCode() === c.code" (click)="categoryCode.set(c.code)">
+                  <app-vehicle-art [icon]="c.icon" />
+                  <strong>{{ c.name }}</strong>
+                  <span>{{ c.seats }} seats · {{ c.luggageCapacity }} {{ c.luggageCapacity === 1 ? 'bag' : 'bags' }}</span>
+                  <span class="vehicle__rate">~{{ c.pricing.perKm | money }}/km</span>
+                </button>
+              }
+            </div>
+          }
+          @default {
+            <div class="vehicles" aria-hidden="true">
+              @for (n of [1, 2, 3, 4]; track n) {
+                <span class="skeleton" style="height: 9.5rem; border-radius: var(--r-md)"></span>
+              }
+            </div>
+          }
+        }
+        @if (show('category')) {
+          <p class="field__error" role="alert"><app-icon name="alert-circle" [size]="14" /> {{ show('category') }}</p>
+        }
+      </fieldset>
+
+      <!-- people -->
+      <fieldset class="step">
+        <legend><span class="step__n">{{ isImmediate() ? 4 : 5 }}</span> Who is travelling?</legend>
+        <div class="form-grid">
+          <div class="field" [attr.data-invalid]="!!show('passengers')">
+            <span class="field__label" id="pax-label">Passengers</span>
+            <div class="stepper" role="group" aria-labelledby="pax-label">
+              <button type="button" class="btn btn--outline btn--icon" [disabled]="passengers() <= 1" (click)="step('passengers', -1)" aria-label="One passenger fewer"><app-icon name="minus" /></button>
+              <output class="stepper__value" aria-live="polite">{{ passengers() }}</output>
+              <button type="button" class="btn btn--outline btn--icon" [disabled]="passengers() >= maxPassengers" (click)="step('passengers', 1)" aria-label="One passenger more"><app-icon name="plus" /></button>
+            </div>
+            @if (show('passengers')) {
+              <p class="field__error" role="alert"><app-icon name="alert-circle" [size]="14" /> {{ show('passengers') }}</p>
+            }
+          </div>
+          <div class="field">
+            <span class="field__label" id="bags-label">Bags <span class="field__optional">(suitcases, not day packs)</span></span>
+            <div class="stepper" role="group" aria-labelledby="bags-label">
+              <button type="button" class="btn btn--outline btn--icon" [disabled]="luggage() <= 0" (click)="step('luggage', -1)" aria-label="One bag fewer"><app-icon name="minus" /></button>
+              <output class="stepper__value" aria-live="polite">{{ luggage() }}</output>
+              <button type="button" class="btn btn--outline btn--icon" [disabled]="luggage() >= 20" (click)="step('luggage', 1)" aria-label="One bag more"><app-icon name="plus" /></button>
+            </div>
+          </div>
+          <div class="field span-2">
+            <label class="field__label" for="notes">Anything the driver should know? <span class="field__optional">(optional)</span></label>
+            <textarea id="notes" class="textarea" maxlength="500" rows="3" placeholder="e.g. Elderly passenger, need a stop at the ATM, surfboard…" [value]="notes()" (input)="notes.set($any($event.target).value)"></textarea>
+            <p class="field__hint">Do not put phone numbers here — your number is shared with the driver only after you book.</p>
+          </div>
+        </div>
+      </fieldset>
+
+      @if (submitError(); as e) {
+        <div class="notice notice--danger" role="alert">
+          <app-icon name="alert-circle" [size]="18" />
+          <div>
+            <strong>{{ e.message }}</strong>
+            @for (fe of e.fieldErrors; track fe.field) {
+              <div>{{ fe.message }}</div>
+            }
+            @if (e.traceId) {
+              <div class="subtle">Reference: {{ e.traceId }}</div>
+            }
+          </div>
+        </div>
+      }
+
+      <button type="submit" class="btn btn--accent btn--lg btn--block only-mobile" [class.is-loading]="submitting()" [disabled]="submitting()">
+        Send to drivers <app-icon class="btn__arrow" name="arrow-right" [size]="20" />
+      </button>
+    </form>
+
+    <!-- ===== Summary ===== -->
+    <aside class="summary ticket" aria-label="Your request so far">
+      <div class="ticket__main">
+        <p class="summary__kind"><app-icon [name]="activeTrip().icon" [size]="16" /> {{ activeTrip().label }}</p>
+        <div class="route">
+          <span class="route__dot"></span>
+          <div>
+            <p class="route__label">{{ pickup()?.label || 'Pickup not chosen' }}</p>
+            <p class="route__sub">Pickup</p>
+          </div>
+          <span class="route__dot route__dot--drop"></span>
+          <div>
+            <p class="route__label">{{ drop()?.label || (dropRequired() ? 'Drop not chosen' : 'As per the tour') }}</p>
+            <p class="route__sub">Drop</p>
+          </div>
+        </div>
+        @if (category(); as c) {
+          <div class="summary__vehicle spin-wheels">
+            <app-vehicle-art [icon]="c.icon" [moving]="submitting()" />
+            <div>
+              <strong>{{ c.name }}</strong>
+              <span>{{ passengers() }} {{ passengers() === 1 ? 'passenger' : 'passengers' }}@if (luggage()) { · {{ luggage() }} {{ luggage() === 1 ? 'bag' : 'bags' }} }</span>
+            </div>
+          </div>
+        }
+      </div>
+      <div class="ticket__stub">
+        @if (estimate(); as est) {
+          <p class="summary__label">Rough estimate</p>
+          <p class="summary__price">{{ est.low | money }} – {{ est.high | money }}</p>
+          <p class="subtle">
+            About {{ est.distanceKm | distance }}@if (est.basis === 'route') {, {{ est.durationMinutes | duration }} }.
+            @if (est.basis === 'straight_line') {
+              Measured in a straight line, so the road distance will be longer.
+            }
+            The driver’s quote is the price.
+          </p>
+        } @else {
+          <p class="summary__label">Price</p>
+          <p class="subtle">Choose a pickup, a drop and a vehicle to see a rough estimate. Drivers then send their actual price.</p>
+        }
+        <button type="button" class="btn btn--accent btn--lg btn--block only-desktop" [class.is-loading]="submitting()" [disabled]="submitting()" (click)="submit()">
+          Send to drivers <app-icon class="btn__arrow" name="arrow-right" [size]="20" />
+        </button>
+        <p class="summary__foot"><app-icon name="clock" [size]="14" /> Drivers have {{ replyWindow() }} to reply.</p>
+      </div>
+    </aside>
+  </div>
+</section>

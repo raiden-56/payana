@@ -1,0 +1,520 @@
+@use 'mixins' as *;
+
+// Shared styles of the admin console. They are attached once, un-encapsulated,
+// by AdminLayout and scoped under its host element, so every admin screen can
+// use these classes without each one shipping its own copy.
+
+app-admin-layout {
+  display: block;
+
+  // --- page header --------------------------------------------------------------
+  .a-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    margin-bottom: clamp(1.1rem, 0.8rem + 1.2vw, 1.9rem);
+
+    h1 {
+      font-size: clamp(1.7rem, 1.3rem + 1.4vw, 2.4rem);
+    }
+
+    p {
+      margin-top: 0.3rem;
+      max-width: 44rem;
+      color: var(--color-text-muted);
+    }
+  }
+
+  .a-head__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .a-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 2.75rem;
+    margin-bottom: 0.25rem;
+    font-size: var(--fs-sm);
+    font-weight: 650;
+    color: var(--ink-700);
+
+    &:hover {
+      color: var(--laterite-600);
+    }
+  }
+
+  // --- filters ------------------------------------------------------------------
+  .a-filters {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(11.5rem, 100%), 1fr));
+    align-items: end;
+    margin-bottom: 1.1rem;
+    padding: 1rem;
+    border: var(--stroke) solid var(--color-border);
+    border-radius: var(--r-md);
+    background: var(--sand-0);
+
+    .a-filters__wide {
+      grid-column: span 2;
+
+      @include until($bp-sm) {
+        grid-column: auto;
+      }
+    }
+
+    .a-filters__actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+  }
+
+  // --- tables ---------------------------------------------------------------------
+  .table {
+    td,
+    th {
+      padding-block: 0.85rem;
+    }
+
+    .num,
+    time {
+      font-variant-numeric: tabular-nums;
+    }
+
+    small {
+      display: block;
+      color: var(--color-text-subtle);
+      font-size: var(--fs-xs);
+    }
+
+    a.a-rowlink {
+      font-weight: 700;
+      color: var(--ink-900);
+      text-decoration: underline;
+      text-decoration-color: var(--ink-300);
+      text-underline-offset: 3px;
+
+      &:hover {
+        color: var(--laterite-600);
+        text-decoration-color: currentColor;
+      }
+    }
+  }
+
+  .a-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: flex-end;
+
+    .btn--sm {
+      min-height: 2.75rem;
+    }
+  }
+
+  // Sticky header for long logs: the wrapper scrolls, the header stays.
+  .table-wrap--tall {
+    max-height: min(70dvh, 46rem);
+    overflow: auto;
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+  }
+
+  // On phones a table becomes a stack of cards: one row per card, each cell
+  // labelled from its data-label attribute.
+  @include until($bp-md) {
+    .table-wrap--stack {
+      border: 0;
+      background: transparent;
+      overflow: visible;
+
+      .table {
+        min-width: 0;
+        display: block;
+
+        thead {
+          @include visually-hidden;
+        }
+
+        tbody {
+          display: grid;
+          gap: 0.75rem;
+        }
+
+        tr {
+          display: grid;
+          gap: 0.45rem;
+          padding: 0.95rem 1rem;
+          border: var(--stroke) solid var(--color-border);
+          border-radius: var(--r-md);
+          background: var(--sand-0);
+        }
+
+        td {
+          display: grid;
+          grid-template-columns: 6.5rem minmax(0, 1fr);
+          gap: 0.75rem;
+          padding: 0;
+          border: 0;
+          text-align: left;
+          // Badges and buttons keep their own width instead of stretching across the card.
+          justify-items: start;
+          overflow-wrap: anywhere;
+
+          &::before {
+            content: attr(data-label);
+            font-size: var(--fs-xs);
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--color-text-subtle);
+            padding-top: 0.15rem;
+          }
+
+          &[data-label=''],
+          &:not([data-label]) {
+            grid-template-columns: 1fr;
+
+            &::before {
+              content: none;
+            }
+          }
+        }
+
+        .a-row-actions {
+          justify-content: flex-start;
+        }
+      }
+    }
+  }
+
+  // --- panels and layout ------------------------------------------------------------
+  .a-split {
+    display: grid;
+    gap: 1.25rem;
+    align-items: start;
+
+    @include from($bp-lg) {
+      grid-template-columns: minmax(0, 1.6fr) minmax(18rem, 1fr);
+    }
+  }
+
+  .a-stack {
+    display: grid;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+
+  .a-panel {
+    border: var(--stroke) solid var(--color-border);
+    border-radius: var(--r-md);
+    background: var(--sand-0);
+    min-width: 0;
+
+    > header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem 1rem;
+      padding: 0.9rem 1.1rem;
+      border-bottom: var(--stroke) solid var(--color-border);
+
+      h2,
+      h3 {
+        font-size: 1.1rem;
+      }
+    }
+
+    > .a-panel__body {
+      padding: 1.1rem;
+    }
+  }
+
+  .a-sub {
+    font-size: var(--fs-sm);
+    color: var(--color-text-muted);
+  }
+
+  .a-cards {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(18.5rem, 100%), 1fr));
+  }
+
+  .a-card {
+    display: grid;
+    gap: 0.6rem;
+    align-content: start;
+    padding: 1.1rem;
+    border: var(--stroke) solid var(--color-border);
+    border-radius: var(--r-md);
+    background: var(--sand-0);
+    transition:
+      border-color var(--dur-2) var(--ease-out),
+      box-shadow var(--dur-3) var(--ease-out);
+
+    &:hover {
+      border-color: var(--ink-900);
+      box-shadow: var(--shadow-sm);
+    }
+
+    &.is-inactive {
+      background: var(--sand-100);
+
+      h3 {
+        color: var(--ink-600);
+      }
+    }
+
+    h3 {
+      font-size: 1.15rem;
+    }
+
+    .a-card__foot {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.3rem;
+      padding-top: 0.75rem;
+      border-top: 1px dashed var(--color-border);
+    }
+  }
+
+  .a-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  // --- editor forms -------------------------------------------------------------------
+  .a-editor {
+    display: grid;
+    gap: 1.25rem;
+    max-width: 58rem;
+    animation: rise-in var(--dur-3) var(--ease-out);
+  }
+
+  .a-fieldset {
+    margin: 0;
+    padding: 1.1rem;
+    border: var(--stroke) solid var(--color-border);
+    border-radius: var(--r-md);
+    background: var(--sand-0);
+    min-width: 0;
+
+    legend {
+      padding-inline: 0.5rem;
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      font-stretch: 110%;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--laterite-700);
+    }
+
+    > .a-sub {
+      margin-bottom: 0.9rem;
+    }
+  }
+
+  .a-checks {
+    display: grid;
+    gap: 0.6rem 1.25rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
+  }
+
+  // One repeatable row (a stop, a price line): fields, then a remove button.
+  .a-repeat {
+    display: grid;
+    gap: 0.6rem;
+    padding: 0.8rem;
+    margin-bottom: 0.6rem;
+    border: 1px dashed var(--ink-300);
+    border-radius: var(--r-sm);
+    background: var(--sand-50);
+
+    @include from($bp-md) {
+      grid-template-columns: var(--repeat-cols, 1fr 1.4fr 7rem) auto;
+      align-items: end;
+    }
+  }
+
+  .a-editor__bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    padding: 0.8rem 1rem;
+    border: var(--stroke) solid var(--ink-900);
+    border-radius: var(--r-md);
+    background: var(--sand-0);
+    box-shadow: var(--shadow-md);
+
+    .a-editor__msg {
+      margin-right: auto;
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      color: var(--color-danger);
+    }
+  }
+
+  .a-preview {
+    display: grid;
+    place-items: center;
+    padding: 0.75rem;
+    border: var(--stroke) solid var(--ink-900);
+    border-radius: var(--r-md);
+    background: var(--marigold-50);
+    overflow: hidden;
+  }
+
+  // --- timelines and threads -------------------------------------------------------------
+  .a-timeline {
+    display: grid;
+    gap: 0;
+
+    li {
+      position: relative;
+      display: grid;
+      gap: 0.1rem;
+      padding: 0 0 1rem 1.5rem;
+      font-size: var(--fs-sm);
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0.2rem;
+        top: 0.35rem;
+        width: 0.65rem;
+        height: 0.65rem;
+        border-radius: 50%;
+        background: var(--marigold-500);
+        border: 1.5px solid var(--ink-900);
+      }
+
+      &:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: calc(0.2rem + 0.325rem - 1px);
+        top: 1.1rem;
+        bottom: 0;
+        border-left: 2px dashed var(--ink-300);
+      }
+
+      strong {
+        font-weight: 700;
+      }
+
+      time,
+      .a-timeline__meta {
+        color: var(--color-text-subtle);
+        font-size: var(--fs-xs);
+      }
+    }
+  }
+
+  .a-thread {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .a-msg {
+    max-width: min(40rem, 92%);
+    padding: 0.8rem 1rem;
+    border: var(--stroke) solid var(--color-border);
+    border-radius: var(--r-md) var(--r-md) var(--r-md) 4px;
+    background: var(--sand-100);
+
+    &--support {
+      justify-self: end;
+      border-color: var(--palm-300);
+      border-radius: var(--r-md) var(--r-md) 4px var(--r-md);
+      background: var(--palm-50);
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 0.75rem;
+      align-items: baseline;
+      margin-bottom: 0.3rem;
+      font-size: var(--fs-xs);
+      color: var(--color-text-subtle);
+
+      strong {
+        font-size: var(--fs-sm);
+        color: var(--ink-900);
+      }
+    }
+
+    p {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  // --- small helpers ------------------------------------------------------------------------
+  .a-mono {
+    font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    overflow-wrap: anywhere;
+  }
+
+  .a-meta {
+    margin: 0;
+    padding: 0.8rem 1rem;
+    border-radius: var(--r-sm);
+    background: var(--ink-900);
+    color: var(--sand-100);
+    font-family: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 22rem;
+    overflow: auto;
+  }
+
+  .a-skeleton-rows {
+    display: grid;
+    gap: 0.6rem;
+
+    .skeleton {
+      height: 3.4rem;
+      border-radius: var(--r-md);
+    }
+  }
+
+  .a-warn {
+    color: var(--marigold-700);
+    font-weight: 700;
+  }
+
+  .a-danger {
+    color: var(--color-danger);
+    font-weight: 700;
+  }
+
+  .a-ok {
+    color: var(--palm-600);
+    font-weight: 700;
+  }
+
+  .kv dd {
+    font-weight: 600;
+  }
+}

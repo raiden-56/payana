@@ -1,0 +1,189 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+.block {
+  margin-bottom: clamp(1.25rem, 1rem + 1vw, 2rem);
+}
+
+.block__title {
+  margin-bottom: 0.75rem;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-600);
+}
+
+// --- needs attention -----------------------------------------------------------
+
+.attention {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr));
+}
+
+.attention__card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'icon count go'
+    'label label label';
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  height: 100%;
+  padding: 1rem 1.1rem;
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: var(--r-md);
+  background: var(--marigold-100);
+  transition:
+    transform var(--dur-2) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+
+  @include hover {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--shadow-hard-sm);
+
+    .attention__go {
+      transform: translateX(3px);
+    }
+  }
+
+  &.is-urgent {
+    background: var(--laterite-100);
+
+    .attention__icon {
+      background: var(--laterite-600);
+      color: #fff;
+    }
+  }
+
+  // Nothing waiting: calm, and says so with a tick rather than colour alone.
+  &.is-clear {
+    background: var(--palm-50);
+    border-color: var(--palm-300);
+
+    .attention__icon {
+      background: var(--palm-600);
+      color: #fff;
+    }
+
+    .attention__count {
+      color: var(--palm-700);
+    }
+  }
+}
+
+.attention__icon {
+  grid-area: icon;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: 50%;
+  background: var(--marigold-500);
+}
+
+.attention__count {
+  grid-area: count;
+  font-size: 2.1rem;
+  font-weight: 800;
+  font-stretch: 110%;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.attention__label {
+  grid-area: label;
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--ink-800);
+}
+
+.attention__go {
+  grid-area: go;
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+// --- tiles ------------------------------------------------------------------------
+
+.tiles {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(15.5rem, 100%), 1fr));
+}
+
+.tile {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  padding: 1.1rem 1.15rem 1.2rem;
+  border: var(--stroke) solid var(--color-border);
+  border-radius: var(--r-md);
+  background: var(--sand-0);
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--ink-700);
+
+    app-icon {
+      color: var(--laterite-600);
+    }
+  }
+
+  &--accent {
+    background: var(--ink-900);
+    border-color: var(--ink-900);
+    color: var(--sand-50);
+
+    header {
+      color: var(--sand-200);
+
+      app-icon {
+        color: var(--marigold-300);
+      }
+    }
+
+    .tile__value {
+      color: var(--marigold-300);
+    }
+
+    .tile__sub {
+      color: var(--sand-300);
+    }
+  }
+}
+
+.tile__value {
+  font-size: clamp(2rem, 1.6rem + 1.4vw, 2.7rem);
+  font-weight: 800;
+  font-stretch: 110%;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+
+  small {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--color-text-subtle);
+  }
+
+  &--money {
+    font-size: clamp(1.8rem, 1.5rem + 1.2vw, 2.4rem);
+  }
+}
+
+.tile__sub {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}

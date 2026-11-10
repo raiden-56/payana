@@ -1,0 +1,11 @@
+# ads.txt - Authorized Digital Sellers
+#
+# Only needed if Google AdSense display ads are switched on
+# (admin console -> Settings -> Analytics & Ads -> AdSense publisher ID).
+#
+# When you have an AdSense account, add ONE line below, replacing the digits
+# with your own publisher ID (the number after "ca-pub-"), then redeploy:
+#
+#   google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0
+#
+# Until then this file intentionally authorises nobody.

@@ -1,0 +1,283 @@
+name: CI
+
+# Quality gates for every pull request and every push to main.
+# A red job here means the change does not meet the definition of done
+# (specs/constitution.md section 5).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Throwaway configuration for the service containers the jobs start.
+# These are not secrets: they exist only inside a CI runner. The API also needs
+# DATA_ENCRYPTION_KEY (32 random bytes); jobs that start the API generate one.
+env:
+  DATABASE_URL: postgres://payana:payana_ci_only@localhost:5432/payana_test
+  REDIS_URL: redis://localhost:6379
+  JWT_ACCESS_SECRET: ci-only-access-secret-not-used-anywhere-else
+  SIGNING_SECRET: ci-only-signing-secret-not-used-anywhere-else
+
+jobs:
+  contracts:
+    name: Contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # Runs npm ci and the build (CommonJS + ES module output).
+      - uses: ./.github/actions/setup
+      - name: Type-check
+        working-directory: packages/contracts
+        run: npm run typecheck
+
+  api:
+    name: API
+    needs: contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: payana
+          POSTGRES_PASSWORD: payana_ci_only
+          POSTGRES_DB: payana_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U payana -d payana_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          lockfile: apps/api/package-lock.json
+      - name: Generate a throwaway data-encryption key
+        run: echo "DATA_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Type-check
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Unit tests
+        run: npm test
+      - name: Migrate the test database
+        run: npm run migration:run
+      - name: Integration and contract tests
+        run: npm run test:e2e
+      - name: OpenAPI document matches the code
+        run: |
+          npm run openapi:export
+          if ! git diff --exit-code -- ../../specs/api/openapi.yaml; then
+            echo "::error file=specs/api/openapi.yaml::The API changed but specs/api/openapi.yaml was not regenerated. Run 'npm run openapi:export' in apps/api and commit the result."
+            exit 1
+          fi
+
+  web:
+    name: Web
+    needs: contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          lockfile: apps/web/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build
+      - name: Build produced an application shell
+        run: test -f dist/web/browser/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist/web/browser
+          if-no-files-found: error
+          retention-days: 7
+
+  e2e:
+    name: End-to-end
+    # Slow, so it guards main rather than every pull request push.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [api, web]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: payana
+          POSTGRES_PASSWORD: payana_ci_only
+          POSTGRES_DB: payana_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U payana -d payana_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      # NODE_ENV is left unset (development): one-time codes are returned in
+      # API responses and the demo data can be seeded.
+      PORT: "3000"
+      # Credentials of the seeded demo staff accounts. The TOTP secret is the
+      # well-known RFC example value, the same one apps/api/.env.example documents.
+      SEED_ADMIN_PASSWORD: ci-only-Admin-Passphrase-2026!
+      SEED_ADMIN_TOTP_SECRET: JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          lockfile: |
+            apps/api/package-lock.json
+            apps/web/package-lock.json
+
+      - name: Generate a throwaway data-encryption key
+        run: echo "DATA_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
+      - name: Install, build, migrate and seed the API
+        working-directory: apps/api
+        run: |
+          npm ci
+          npm run build
+          npm run migration:run
+          npm run seed
+
+      - name: Start the API
+        working-directory: apps/api
+        run: |
+          nohup npm run start:prod > "$RUNNER_TEMP/api.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://localhost:3000/api/v1/health/ready > /dev/null; then
+              echo "API ready after ${attempt}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::API did not become ready within 60 seconds"
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+
+      - name: Install the web app and a browser
+        working-directory: apps/web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Playwright
+        working-directory: apps/web
+        run: npm run e2e
+
+      - name: API log
+        if: failure()
+        run: cat "$RUNNER_TEMP/api.log" || true
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  security:
+    name: Security (${{ matrix.package }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [packages/contracts, apps/api, apps/web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      # Reads the lockfile only. Gates on what ships: runtime dependencies with
+      # a high or critical advisory. Development-only advisories are reported
+      # by Dependabot instead of blocking every pull request.
+      - name: npm audit
+        working-directory: ${{ matrix.package }}
+        run: npm audit --omit=dev --audit-level=high
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: 8.21.2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # scan history, not just the tip
+      - name: Install gitleaks
+        run: |
+          curl --silent --show-error --fail --location \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar --extract --gzip --directory "$RUNNER_TEMP" gitleaks
+      - name: Scan
+        run: |
+          "$RUNNER_TEMP/gitleaks" detect --source . --config .github/gitleaks.toml --redact --no-banner --verbose
+
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: Format
+        run: terraform fmt -check -recursive -diff infra/terraform
+      # `test` plans each environment against a mocked AWS provider: it needs no
+      # credentials and creates nothing.
+      - name: Validate and plan offline
+        run: |
+          for environment in staging production; do
+            echo "::group::${environment}"
+            terraform -chdir="infra/terraform/envs/${environment}" init -backend=false -input=false
+            terraform -chdir="infra/terraform/envs/${environment}" validate
+            terraform -chdir="infra/terraform/envs/${environment}" test
+            echo "::endgroup::"
+          done

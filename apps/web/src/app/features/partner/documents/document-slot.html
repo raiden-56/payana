@@ -1,0 +1,141 @@
+@let doc = document();
+<article class="slot">
+  <header class="slot__head">
+    <span class="slot__icon" aria-hidden="true"><app-icon [name]="state().icon" [size]="18" /></span>
+    <div class="slot__title">
+      <h4>
+        {{ info().label }}
+        @if (optional()) {
+          <span class="field__optional">(optional)</span>
+        }
+      </h4>
+      <p>{{ info().help }}</p>
+    </div>
+    <span class="badge slot__badge" [class]="'badge slot__badge badge--' + state().tone">{{ state().label }}</span>
+  </header>
+
+  @if (doc) {
+    <dl class="slot__facts">
+      @if (doc.numberMasked) {
+        <div><dt>Number</dt><dd class="tabular">•••• {{ doc.numberMasked }}</dd></div>
+      }
+      @if (doc.expiresOn) {
+        <div>
+          <dt>Valid until</dt>
+          <dd>
+            {{ doc.expiresOn | dateOnly }}
+            @if (expiryText()) {
+              <strong class="slot__expiry">· {{ expiryText() }}</strong>
+            }
+          </dd>
+        </div>
+      }
+      <div><dt>Sent</dt><dd>{{ doc.submittedAt | dateOnly }}</dd></div>
+    </dl>
+  }
+
+  @if (slot().state === 'rejected') {
+    <p class="notice notice--danger">
+      <app-icon name="alert-circle" [size]="18" />
+      <span>
+        <strong>Why it was not accepted:</strong> {{ rejection() || 'See the note from the reviewer.' }}
+        @if (doc?.reviewerNote) {
+          <span class="slot__note">Reviewer’s note: “{{ doc!.reviewerNote }}”</span>
+        }
+      </span>
+    </p>
+  } @else if (slot().state === 'expired') {
+    <p class="notice notice--danger">
+      <app-icon name="alert-circle" [size]="18" />
+      <span>This document has expired. You cannot take bookings that depend on it until a current one is approved.</span>
+    </p>
+  } @else if (slot().state === 'expiring') {
+    <p class="notice notice--warning">
+      <app-icon name="alert" [size]="18" />
+      <span>Renew this soon and upload the new one. The current document stays in force until the new one is approved.</span>
+    </p>
+  } @else if (doc?.reviewerNote) {
+    <p class="notice"><app-icon name="info" [size]="18" /> <span>Reviewer’s note: “{{ doc!.reviewerNote }}”</span></p>
+  }
+
+  <button
+    type="button"
+    class="btn btn--sm slot__action"
+    [class.btn--dark]="!open() && (slot().state === 'missing' || slot().state === 'rejected' || slot().state === 'expired')"
+    [class.btn--outline]="open() || !(slot().state === 'missing' || slot().state === 'rejected' || slot().state === 'expired')"
+    [attr.aria-expanded]="open()"
+    [attr.aria-controls]="uid + '-form'"
+    (click)="toggle()"
+  >
+    <app-icon [name]="open() ? 'chevron-up' : 'upload'" [size]="15" /> {{ open() ? 'Close' : actionLabel() }}
+  </button>
+
+  @if (open()) {
+    <form class="slot__form" [id]="uid + '-form'" (submit)="$event.preventDefault(); submit()" novalidate>
+      <div class="field">
+        <span class="field__label">Photo or scan</span>
+        <app-file-pick [label]="'Choose the ' + info().label.toLowerCase()" [types]="fileTypes" [disabled]="busy()" (picked)="onFile($event)" />
+        @if (errors.message('file'); as message) {
+          <p class="field__error" role="alert"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        }
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label class="field__label" [for]="uid + '-num'">{{ info().numberLabel }} <span class="field__optional">(optional)</span></label>
+          <input
+            class="input"
+            type="text"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            maxlength="40"
+            [id]="uid + '-num'"
+            [formControl]="form.controls.documentNumber"
+            [attr.aria-invalid]="errors.invalid('documentNumber')"
+            [attr.aria-describedby]="uid + '-num-help'"
+          />
+          @if (errors.message('documentNumber'); as message) {
+            <p class="field__error" [id]="uid + '-num-help'"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+          } @else {
+            <p class="field__hint" [id]="uid + '-num-help'">Stored encrypted. Afterwards only the last four characters are shown.</p>
+          }
+        </div>
+        <div class="field">
+          <label class="field__label" [for]="uid + '-exp'">
+            Valid until
+            @if (!expiryRequired()) {
+              <span class="field__optional">(if it has one)</span>
+            }
+          </label>
+          <input
+            class="input"
+            type="date"
+            [id]="uid + '-exp'"
+            [min]="today"
+            [formControl]="form.controls.expiresOn"
+            [attr.aria-invalid]="errors.invalid('expiresOn')"
+            [attr.aria-required]="expiryRequired()"
+            [attr.aria-describedby]="uid + '-exp-help'"
+          />
+          @if (errors.message('expiresOn'); as message) {
+            <p class="field__error" [id]="uid + '-exp-help'"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+          } @else {
+            <p class="field__hint" [id]="uid + '-exp-help'">The expiry date printed on the document.</p>
+          }
+        </div>
+      </div>
+
+      @if (problem()) {
+        <p class="notice notice--danger" role="alert"><app-icon name="alert-circle" [size]="18" /> <span>{{ problem() }}</span></p>
+      }
+
+      <div class="form-actions slot__form-actions">
+        <span class="slot__stage" aria-live="polite">
+          @if (stage() === 'uploading') { Uploading the file… } @else if (stage() === 'saving') { Saving… }
+        </span>
+        <button type="submit" class="btn btn--accent" [class.is-loading]="busy()" [disabled]="busy()">Send for review</button>
+      </div>
+    </form>
+  }
+</article>

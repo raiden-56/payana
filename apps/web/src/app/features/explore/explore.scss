@@ -1,0 +1,284 @@
+@use 'mixins' as *;
+
+:host {
+  display: block;
+}
+
+// ===== Filters =================================================================
+
+.filters {
+  display: grid;
+  gap: 0.6rem 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  // The suggestion list has to escape the card.
+  overflow: visible;
+  position: relative;
+  z-index: 3;
+
+  @include from($bp-lg) {
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.3fr) auto;
+  }
+}
+
+.filters__where {
+  grid-column: 1 / -1;
+
+  @include from($bp-lg) {
+    grid-column: auto;
+  }
+}
+
+.filters__radius {
+  grid-column: 1 / -1;
+
+  @include from($bp-lg) {
+    grid-column: auto;
+  }
+
+  strong {
+    color: var(--laterite-600);
+  }
+}
+
+.filters__avail {
+  grid-column: 1 / -1;
+  align-self: center;
+  white-space: nowrap;
+
+  @include from($bp-lg) {
+    grid-column: auto;
+    margin-top: 1.4rem;
+  }
+}
+
+.filters__cats {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--color-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  // Let chips scroll to the card edge on phones.
+  margin-inline: calc(clamp(1rem, 0.7rem + 1.2vw, 1.6rem) * -1);
+  padding-inline: clamp(1rem, 0.7rem + 1.2vw, 1.6rem);
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @include from($bp-md) {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+}
+
+.chip--art {
+  padding-left: 0.5rem;
+
+  app-vehicle-art {
+    width: 2.4rem;
+  }
+
+  &[aria-pressed='true'] app-vehicle-art {
+    // Keep the artwork readable on the dark selected chip.
+    --ink: #1f1a14;
+    filter: drop-shadow(0 0 0 var(--sand-50));
+    background: var(--sand-50);
+    border-radius: var(--r-pill);
+    padding: 0 0.2rem;
+  }
+}
+
+// Range slider in the brand colours (the native default is blue on most systems).
+.range {
+  appearance: none;
+  width: 100%;
+  height: 2.9rem;
+  background: transparent;
+  cursor: pointer;
+
+  &::-webkit-slider-runnable-track {
+    height: 0.5rem;
+    border-radius: var(--r-pill);
+    background: linear-gradient(90deg, var(--laterite-600) var(--fill, 20%), var(--sand-300) var(--fill, 20%));
+  }
+
+  &::-moz-range-track {
+    height: 0.5rem;
+    border-radius: var(--r-pill);
+    background: var(--sand-300);
+  }
+
+  &::-moz-range-progress {
+    height: 0.5rem;
+    border-radius: var(--r-pill);
+    background: var(--laterite-600);
+  color: var(--on-accent);
+  }
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: -0.5rem;
+    border: var(--stroke) solid var(--ink-900);
+    border-radius: 50%;
+    background: var(--marigold-500);
+  color: var(--on-accent);
+    box-shadow: var(--shadow-hard-sm);
+    transition: transform var(--dur-1) var(--ease-out);
+  }
+
+  &::-moz-range-thumb {
+    width: 1.35rem;
+    height: 1.35rem;
+    border: var(--stroke) solid var(--ink-900);
+    border-radius: 50%;
+    background: var(--marigold-500);
+  color: var(--on-accent);
+  }
+
+  &:active::-webkit-slider-thumb {
+    transform: scale(1.15);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: none;
+
+    &::-webkit-slider-thumb {
+      outline: 2.5px solid var(--ink-900);
+      outline-offset: 2px;
+    }
+  }
+}
+
+// ===== Results =================================================================
+
+.results {
+  display: grid;
+  gap: var(--s-6);
+  margin-top: var(--s-6);
+  align-items: start;
+
+  &--with-radar {
+    @include from($bp-lg) {
+      grid-template-columns: minmax(0, 1fr) 21rem;
+    }
+  }
+}
+
+.results__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  min-height: 2.5rem;
+  margin-bottom: var(--s-4);
+}
+
+.results__count {
+  margin-right: auto;
+  font-weight: 650;
+}
+
+.cards {
+  --grid-gap: var(--s-4);
+  grid-template-columns: repeat(auto-fill, minmax(min(17.5rem, 100%), 1fr));
+  transition: opacity var(--dur-2) var(--ease-out);
+
+  &.is-refreshing {
+    opacity: 0.55;
+  }
+
+  > li {
+    display: flex;
+
+    > app-driver-card {
+      width: 100%;
+    }
+  }
+}
+
+.cards__ad {
+  grid-column: 1 / -1;
+
+  &:has(app-ad-slot[hidden]) {
+    display: none;
+  }
+
+  app-ad-slot {
+    width: 100%;
+  }
+}
+
+.results__radar {
+  display: none;
+  gap: 0.35rem;
+  padding: 1.25rem;
+  border: var(--stroke) solid var(--ink-900);
+  border-radius: var(--r-lg);
+  background: var(--sand-0);
+  box-shadow: var(--shadow-hard-sm);
+
+  &.is-open {
+    display: grid;
+    order: -1;
+    animation: rise-in var(--dur-3) var(--ease-out);
+  }
+
+  @include from($bp-lg) {
+    display: grid;
+    position: sticky;
+    top: calc(var(--header-h) + 1rem);
+    order: 0;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  app-radar {
+    margin-top: 0.75rem;
+  }
+}
+
+// "Closest to you" quick-pick strip
+.closest {
+  display: grid;
+  gap: var(--s-3);
+  margin-bottom: var(--s-5);
+
+  @include from($bp-md) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.closest__item {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.8rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.55rem;
+  border-radius: var(--r-md);
+  text-align: left;
+  transition: border-color var(--dur-2), transform var(--dur-2) var(--ease-out);
+
+  span {
+    display: grid;
+    line-height: 1.3;
+    min-width: 0;
+  }
+
+  small {
+    color: var(--color-text-muted);
+  }
+
+  &:hover {
+    border-color: rgb(var(--glow) / 0.5);
+    transform: translateY(-2px);
+  }
+}

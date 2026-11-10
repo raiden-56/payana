@@ -1,0 +1,226 @@
+@use 'mixins' as *;
+
+.container {
+  width: 100%;
+  max-width: calc(var(--container) + var(--gutter) * 2);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+
+  &--narrow {
+    max-width: calc(var(--container-narrow) + var(--gutter) * 2);
+  }
+}
+
+.section {
+  padding-block: var(--section-y);
+  position: relative;
+
+  &--tight {
+    padding-block: calc(var(--section-y) * 0.6);
+  }
+
+  &--sunken {
+    background: var(--color-surface-sunken);
+  }
+
+  &--dark {
+    background: var(--palm-800);
+    color: var(--color-text-on-dark);
+  }
+}
+
+// Heading block used at the top of most sections.
+.section-head {
+  display: grid;
+  gap: var(--s-3);
+  max-width: 44rem;
+  margin-bottom: clamp(1.75rem, 1rem + 2.5vw, 3rem);
+
+  &--center {
+    margin-inline: auto;
+    text-align: center;
+    justify-items: center;
+  }
+
+  &--split {
+    max-width: none;
+    grid-template-columns: 1fr;
+    align-items: end;
+
+    @include from($bp-md) {
+      grid-template-columns: 1fr auto;
+    }
+  }
+
+  p {
+    color: var(--color-text-muted);
+    font-size: var(--fs-lg);
+    max-width: 38rem;
+  }
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+
+  &::before {
+    content: '';
+    width: 1.5rem;
+    height: 2px;
+    background: currentColor;
+    border-radius: 2px;
+  }
+
+  .section--dark & {
+    color: var(--marigold-300);
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack-gap, var(--s-4));
+}
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cluster-gap, var(--s-3));
+}
+
+.spread {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+
+.grid {
+  display: grid;
+  gap: var(--grid-gap, var(--s-5));
+
+  &--2 {
+    @include from($bp-md) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  &--3 {
+    @include from($bp-sm) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    @include from($bp-lg) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  &--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    @include from($bp-lg) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  // As many columns as fit, each at least --min wide.
+  &--auto {
+    grid-template-columns: repeat(auto-fill, minmax(min(var(--min, 17rem), 100%), 1fr));
+  }
+}
+
+// Horizontal scroller that becomes a normal grid on wide screens.
+.rail {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: min(78%, 19rem);
+  gap: var(--s-4);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--gutter);
+  margin-inline: calc(var(--gutter) * -1);
+  padding: var(--s-2) var(--gutter) var(--s-5);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  > * {
+    scroll-snap-align: start;
+  }
+
+  @include from($bp-lg) {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(var(--rail-cols, 4), minmax(0, 1fr));
+    grid-auto-columns: auto;
+    overflow: visible;
+    margin-inline: 0;
+    padding: 0;
+  }
+}
+
+.page {
+  padding-block: clamp(1.5rem, 1rem + 2vw, 3rem) var(--section-y);
+  min-height: 60dvh;
+}
+
+.page-head {
+  display: grid;
+  gap: var(--s-2);
+  margin-bottom: clamp(1.25rem, 1rem + 1.5vw, 2.25rem);
+
+  p {
+    color: var(--color-text-muted);
+    max-width: 40rem;
+  }
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.subtle {
+  color: var(--color-text-subtle);
+  font-size: var(--fs-sm);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.only-desktop {
+  @include until($bp-md) {
+    display: none !important;
+  }
+}
+
+.only-mobile {
+  @include from($bp-md) {
+    display: none !important;
+  }
+}
+
+// The "taxi band": a marigold-and-ink chequer strip used as a divider.
+.taxi-band {
+  height: 14px;
+  background:
+    repeating-conic-gradient(var(--ink-900) 0% 25%, var(--marigold-500) 0% 50%) 0 0 / 14px 14px;
+}
+
+// Wavy edge between two sections. Put it at the top of the lower section and
+// set --wave-fill to that section's background.
+.wave-edge {
+  display: block;
+  width: 100%;
+  height: clamp(28px, 4vw, 56px);
+  color: var(--wave-fill, var(--color-bg));
+  margin-bottom: -1px;
+}

@@ -1,0 +1,55 @@
+# Local development infrastructure only. Production runs on managed services
+# (see specs/architecture/system-design.md and infra/terraform).
+#
+# Host ports are deliberately off the defaults (5439 / 6380 / 9100) so this
+# stack does not collide with a Postgres, Redis or other service already
+# running on the developer machine. Override with the *_HOST_PORT variables.
+name: payana
+
+services:
+  postgres:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_USER: payana
+      POSTGRES_PASSWORD: payana_dev_only
+      POSTGRES_DB: payana
+    ports:
+      - "${PG_HOST_PORT:-5439}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payana -d payana"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${REDIS_HOST_PORT:-6380}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Optional S3-compatible object storage. The API defaults to the local-disk
+  # storage adapter in development; start this with `docker compose --profile s3 up -d`
+  # and set STORAGE_DRIVER=s3 to exercise the S3 adapter locally.
+  minio:
+    profiles: ["s3"]
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: payana
+      MINIO_ROOT_PASSWORD: payana_dev_only
+    ports:
+      - "${MINIO_HOST_PORT:-9100}:9000"
+      - "${MINIO_CONSOLE_HOST_PORT:-9101}:9001"
+    volumes:
+      - miniodata:/data
+
+volumes:
+  pgdata:
+  miniodata:

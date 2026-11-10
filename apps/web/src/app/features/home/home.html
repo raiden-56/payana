@@ -1,0 +1,340 @@
+<!-- ===== 1. Split hero: words and search | photo slideshow ===================== -->
+<section class="hero">
+  <div class="container hero__grid">
+    <div class="hero__left">
+      <p class="hero__place">
+        <span class="dot dot--live"></span>
+        Live in {{ brand.launchRegion }} <span class="kn" lang="kn">ಗೋಕರ್ಣ</span>
+      </p>
+      <h1 class="hero__title">
+        <span class="line"><span>Ride the coast</span></span>
+        <span class="line"><span>with a <em>local</em>.</span></span>
+      </h1>
+      <p class="hero__lead">
+        Verified auto, taxi and tour drivers across {{ brand.launchRegion }}. Ask once, compare real quotes, pay the driver
+        directly.
+      </p>
+
+      <form class="search" (submit)="$event.preventDefault(); getQuotes()" novalidate>
+        <div class="search__tabs" role="tablist" aria-label="Kind of trip">
+          @for (tab of tabs; track tab.type; let i = $index) {
+            <button
+              type="button"
+              role="tab"
+              class="search__tab"
+              [attr.aria-selected]="tripType() === tab.type"
+              [attr.tabindex]="tripType() === tab.type ? 0 : -1"
+              (click)="selectTab(tab.type)"
+              (keydown)="onTabKey($event, i)"
+            >
+              <app-icon [name]="tab.icon" [size]="16" /> {{ tab.label }}
+            </button>
+          }
+        </div>
+        <div class="search__fields">
+          <app-location-picker
+            label="Pickup"
+            placeholder="Where from?"
+            [(value)]="pickup"
+            [invalid]="triedSubmit() && !pickup()"
+            errorText="Choose a pickup point to continue."
+          />
+          @if (needsDrop()) {
+            <app-location-picker label="Drop" placeholder="Where to?" [allowCurrentLocation]="false" [(value)]="drop" />
+          }
+        </div>
+        <div class="search__foot">
+          <span class="search__hint">{{ activeTab().hint }}</span>
+          <button type="submit" class="btn btn--accent btn--lg">
+            Get quotes <app-icon class="btn__arrow" name="arrow-right" [size]="20" />
+          </button>
+        </div>
+      </form>
+      <button type="button" class="hero__alt" (click)="browseNearby()">Just looking? Browse drivers nearby <app-icon name="arrow-right" [size]="15" /></button>
+    </div>
+
+    <div class="hero__right" appParallax="-0.08" aria-roledescription="slideshow" aria-label="Places on the coast">
+      <div class="slides">
+        @for (slide of slides; track slide.key; let i = $index) {
+          <figure class="slide" [class.is-active]="i === slide$()" [attr.aria-hidden]="i !== slide$()">
+            <app-photo [key]="slide.key" [priority]="i === 0" [decorative]="i !== slide$()" sizes="(min-width: 64rem) 46vw, 100vw" />
+            <figcaption>
+              <strong>{{ slide.title }}</strong>
+              <span>{{ slide.sub }}</span>
+            </figcaption>
+          </figure>
+        }
+        <div class="slides__nav">
+          @for (slide of slides; track slide.key; let i = $index) {
+            <button type="button" class="slides__dot" [class.is-active]="i === slide$()" [attr.aria-label]="'Show ' + slide.title" [attr.aria-current]="i === slide$()" (click)="goToSlide(i)">
+              <span></span>
+            </button>
+          }
+        </div>
+      </div>
+      <!-- a small second photo floats over the corner and drifts at its own speed -->
+      <div class="hero__float" appParallax="0.18" aria-hidden="true">
+        <app-photo key="auto-stand" [decorative]="true" sizes="14rem" />
+      </div>
+      @if (figures(); as f) {
+        <div class="hero__badge" appParallax="0.3">
+          <strong [appCountUp]="f.drivers"></strong>
+          <span>verified drivers<br />in {{ brand.launchRegion }}</span>
+        </div>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2. Trust bar ============================================================ -->
+<section class="trust" aria-label="Why {{ brand.name }}">
+  <div class="container">
+    <ul class="trust__points">
+      <li appReveal [revealDelay]="0"><span class="trust__icon"><app-icon name="shield-check" [size]="20" /></span><span><strong>Checked before listing</strong>Licence, RC, insurance, permit</span></li>
+      <li appReveal [revealDelay]="80"><span class="trust__icon"><app-icon name="tag" [size]="20" /></span><span><strong>Quotes side by side</strong>Compare fare, rating, vehicle</span></li>
+      <li appReveal [revealDelay]="160"><span class="trust__icon"><app-icon name="lock" [size]="20" /></span><span><strong>The quote is the price</strong>No surge, no meter games</span></li>
+      <li appReveal [revealDelay]="240"><span class="trust__icon"><app-icon name="rupee" [size]="20" /></span><span><strong>Pay the driver</strong>Cash or UPI, no commission</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===== 3. Vehicle rail ========================================================= -->
+<section class="section">
+  <div class="container">
+    <header class="head-row" appReveal>
+      <div>
+        <span class="eyebrow">Pick your ride</span>
+        <h2>From a quick auto to a van for the whole family.</h2>
+      </div>
+      <div class="rail-nav">
+        <button type="button" class="btn btn--outline btn--icon" aria-label="Previous vehicles" (click)="scrollRail(-1)"><app-icon name="chevron-left" /></button>
+        <button type="button" class="btn btn--outline btn--icon" aria-label="Next vehicles" (click)="scrollRail(1)"><app-icon name="chevron-right" /></button>
+      </div>
+    </header>
+
+    @switch (categories.status()) {
+      @case ('error') {
+        <app-state-panel [error]="categories.error()" (retry)="categories.load()" />
+      }
+      @case ('ready') {
+        <ul class="vrail" #rail>
+          @for (category of categories.data(); track category.id; let i = $index) {
+            <li appReveal="right" [revealDelay]="i * 60">
+              <a class="vcard tilt" appTilt="5" routerLink="/explore" [queryParams]="{ category: category.code }">
+                <app-vehicle-art [icon]="category.icon" />
+                <span class="vcard__body">
+                  <strong>{{ category.name }}</strong>
+                  <span class="vcard__facts">
+                    <span><app-icon name="users" [size]="14" /> {{ category.seats }}</span>
+                    <span><app-icon name="luggage" [size]="14" /> {{ category.luggageCapacity }}</span>
+                  </span>
+                  <span class="vcard__price">from <b>{{ category.pricing.perKm | money }}</b>/km</span>
+                </span>
+              </a>
+            </li>
+          }
+        </ul>
+      }
+      @default {
+        <ul class="vrail" aria-hidden="true">
+          @for (n of [1, 2, 3, 4]; track n) {
+            <li><span class="skeleton" style="height: 22rem; border-radius: var(--r-xl)"></span></li>
+          }
+        </ul>
+      }
+    }
+  </div>
+</section>
+
+<!-- ===== 4. How it works: pinned photo, steps scroll past ======================== -->
+<section class="section section--sunken how">
+  <div class="container how__grid">
+    <div class="how__media" aria-hidden="true">
+      @for (step of steps; track step.photo; let i = $index) {
+        <app-photo class="how__photo" [class.is-active]="i === activeStep()" [key]="step.photo" [decorative]="true" sizes="(min-width: 64rem) 45vw, 100vw" />
+      }
+      <span class="how__count">0{{ activeStep() + 1 }} <i>/ 0{{ steps.length }}</i></span>
+    </div>
+    <div class="how__steps">
+      <header appReveal>
+        <span class="eyebrow">How it works</span>
+        <h2>Three steps. No haggling at the stand.</h2>
+      </header>
+      @for (step of steps; track step.title; let i = $index) {
+        <article class="how__step" [class.is-active]="i === activeStep()" [attr.data-step]="i">
+          <span class="how__n">0{{ i + 1 }}</span>
+          <h3>{{ step.title }}</h3>
+          <p>{{ step.text }}</p>
+        </article>
+      }
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5. Destinations ========================================================= -->
+<section class="section">
+  <div class="container">
+    <header class="head-row" appReveal>
+      <div>
+        <span class="eyebrow">The coast, up close</span>
+        <h2>Beaches, temples and forts — an auto ride apart.</h2>
+      </div>
+      <a routerLink="/packages" class="btn btn--outline">Day trips <app-icon class="btn__arrow" name="arrow-right" [size]="18" /></a>
+    </header>
+    <ul class="mosaic">
+      @for (m of mosaic; track m.key; let i = $index) {
+        <li class="mosaic__item" [class]="'mosaic__item mosaic__item--' + i" appReveal="scale" [revealDelay]="i * 70">
+          <a [routerLink]="m.link" class="mosaic__link">
+            <span class="mosaic__media" [appParallax]="i % 2 ? 0.06 : 0.1"><app-photo [key]="m.key" sizes="(min-width: 64rem) 40vw, 90vw" /></span>
+            <span class="mosaic__text">
+              <strong>{{ m.title }}</strong>
+              <span>{{ m.sub }}</span>
+            </span>
+            <span class="mosaic__go" aria-hidden="true"><app-icon name="arrow-up-right" [size]="18" /></span>
+          </a>
+        </li>
+      }
+    </ul>
+  </div>
+</section>
+
+<!-- ===== 6. Drivers on the road ================================================== -->
+@if (drivers.status() === 'ready' && drivers.data()!.items.length) {
+  <section class="section section--sunken">
+    <div class="container">
+      <header class="head-row" appReveal>
+        <div>
+          <span class="eyebrow">On the road today</span>
+          <h2>Some of the drivers you could ride with.</h2>
+        </div>
+        <a routerLink="/explore" class="btn btn--outline">Browse everyone <app-icon class="btn__arrow" name="arrow-right" [size]="18" /></a>
+      </header>
+      <div class="drivers">
+        @for (driver of drivers.data()!.items; track driver.driverId; let i = $index) {
+          <app-driver-card [driver]="driver" appReveal [revealDelay]="i * 80" />
+        }
+      </div>
+    </div>
+  </section>
+}
+
+<!-- ===== 7. Tours as rows ======================================================== -->
+@if (showPackages() && packages.status() === 'ready' && packages.data()!.length) {
+  <section class="section">
+    <div class="container">
+      <header class="head-row" appReveal>
+        <div>
+          <span class="eyebrow">Day trips</span>
+          <h2>Let a local show you the good parts.</h2>
+        </div>
+        <a routerLink="/packages" class="btn btn--outline">All tours <app-icon class="btn__arrow" name="arrow-right" [size]="18" /></a>
+      </header>
+      <ol class="tours">
+        @for (tour of packages.data()!.slice(0, 4); track tour.id; let i = $index) {
+          <li appReveal [revealDelay]="i * 70">
+            <a class="tour" [routerLink]="['/packages', tour.slug]">
+              <span class="tour__n">0{{ i + 1 }}</span>
+              <app-photo class="tour__art" [key]="packagePhoto(tour.artwork, tour.slug)" sizes="(min-width: 64rem) 16vw, 40vw" />
+              <span class="tour__body">
+                <strong>{{ tour.title }}</strong>
+                <span>{{ tour.summary }}</span>
+              </span>
+              <span class="tour__meta">
+                <span>{{ tour.durationHours * 60 | duration }} · {{ tour.stops.length }} stops</span>
+                @if (tour.priceFrom[0]; as from) {
+                  <b>from {{ from.price | money }}</b>
+                }
+              </span>
+              <span class="tour__go" aria-hidden="true"><app-icon name="arrow-up-right" [size]="20" /></span>
+            </a>
+          </li>
+        }
+      </ol>
+    </div>
+  </section>
+}
+
+<!-- ===== 8. Towns ================================================================ -->
+@if (regions.status() === 'ready' && regions.data()!.length) {
+  <section class="section section--sunken">
+    <div class="container">
+      <header class="head-row" appReveal>
+        <div>
+          <span class="eyebrow">Where we run</span>
+          <h2>Starting in {{ brand.launchRegion }}, then along the coast.</h2>
+        </div>
+      </header>
+      <app-coast-map [regions]="regions.data()!" />
+    </div>
+  </section>
+}
+
+<div class="container sponsor">
+  <app-ad-slot [placement]="adPlacement" />
+</div>
+
+<!-- ===== 9. Drivers CTA: split card ============================================== -->
+@if (showDrive()) {
+  <section class="section">
+    <div class="container">
+      <div class="cta">
+        <div class="cta__media"><app-photo class="cta__photo" key="autos" [decorative]="true" appParallax="0.12" sizes="(min-width: 64rem) 50vw, 100vw" /></div>
+        <div class="cta__body" appReveal="left">
+          <span class="eyebrow">For drivers and owners</span>
+          <h2>Own an auto or a taxi? Let travellers find you first.</h2>
+          <ul class="cta__list">
+            <li><app-icon name="check" [size]="18" /> List your vehicle and set your own rates</li>
+            <li><app-icon name="check" [size]="18" /> Get ride requests and advance bookings on your phone</li>
+            <li><app-icon name="check" [size]="18" /> You quote the fare — and you keep it</li>
+          </ul>
+          <div class="cluster">
+            <a routerLink="/drive" class="btn btn--accent btn--lg">Start driving with us <app-icon class="btn__arrow" name="arrow-right" [size]="20" /></a>
+            <a routerLink="/drive" fragment="plans" class="btn btn--outline btn--lg">See plans</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+}
+
+<!-- ===== 10. FAQ beside a sticky heading ========================================= -->
+<section class="section">
+  <div class="container faq-grid">
+    <header class="faq-grid__head" appReveal>
+      <span class="eyebrow">Good to know</span>
+      <h2>Questions people ask before their first ride.</h2>
+      <a routerLink="/help" class="link">More in the help centre</a>
+    </header>
+    <div class="faq" appReveal>
+      <details name="home-faq">
+        <summary>Is the quote the final price?<app-icon name="plus" [size]="20" /></summary>
+        <p>Yes. A driver's quote is for the trip exactly as you described it, and it lists what is included — fuel, tolls, parking, waiting time. If you change the plan on the way, agree the difference with the driver before you set off again.</p>
+      </details>
+      <details name="home-faq">
+        <summary>How do I pay?<app-icon name="plus" [size]="20" /></summary>
+        <p>You pay the driver directly, in cash or by UPI, when the trip is done. {{ brand.name }} does not hold your money for the ride.</p>
+      </details>
+      <details name="home-faq">
+        <summary>What does “verified” mean?<app-icon name="plus" [size]="20" /></summary>
+        <p>Before a driver is listed, our team reviews their identity, driving licence, vehicle registration, insurance, permit and fitness certificate. Documents are tracked to their expiry date; a driver whose papers lapse stops appearing in search until they are renewed.</p>
+      </details>
+      <details name="home-faq">
+        <summary>Can I book for tomorrow, or for an airport run?<app-icon name="plus" [size]="20" /></summary>
+        <p>Yes. Choose “Later” for a local trip at a set time, or “Outstation” for stations, airports and other towns. Drivers quote in advance and the booking is confirmed when you accept one.</p>
+      </details>
+      <details name="home-faq">
+        <summary>Who sees my phone number?<app-icon name="plus" [size]="20" /></summary>
+        <p>Nobody, until you accept a quote. After that, only the driver of that booking can call you — and only while the booking is active.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 11. Closing: full-bleed parallax photo ================================= -->
+<section class="closing">
+  <div class="closing__media" appParallax="0.25"><app-photo key="karwar" [decorative]="true" /></div>
+  <div class="container closing__inner" appReveal="scale">
+    <h2>Where to today?</h2>
+    <a routerLink="/request" class="btn btn--accent btn--lg">Book a ride <app-icon class="btn__arrow" name="arrow-right" [size]="20" /></a>
+  </div>
+</section>

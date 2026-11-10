@@ -1,0 +1,129 @@
+@use 'mixins' as *;
+
+:host {
+  --accent: var(--ink-300);
+  display: block;
+  min-width: 0;
+}
+
+:host([data-state='approved']) {
+  --accent: var(--palm-500);
+}
+:host([data-state='in_review']),
+:host([data-state='expiring']) {
+  --accent: var(--marigold-500);
+}
+:host([data-state='rejected']),
+:host([data-state='expired']) {
+  --accent: var(--crimson-600);
+}
+
+.slot {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem 1.1rem;
+  border: var(--stroke) solid var(--color-border);
+  border-left: 5px solid var(--accent);
+  border-radius: var(--r-md);
+  background: var(--color-surface);
+  transition: border-color var(--dur-3) var(--ease-out);
+}
+
+.slot__head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 0.75rem;
+  align-items: start;
+
+  @include from($bp-sm) {
+    grid-template-columns: auto 1fr auto;
+  }
+}
+
+.slot__icon {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 22%, var(--sand-0));
+  color: var(--ink-900);
+}
+
+.slot__title {
+  min-width: 0;
+
+  h4 {
+    font-size: 1.05rem;
+  }
+
+  p {
+    font-size: var(--fs-sm);
+    color: var(--color-text-muted);
+  }
+}
+
+.slot__badge {
+  grid-column: 2;
+  justify-self: start;
+
+  @include from($bp-sm) {
+    grid-column: auto;
+  }
+}
+
+.badge--neutral {
+  --badge-bg: var(--sand-200);
+  --badge-fg: var(--ink-700);
+}
+
+.slot__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.75rem;
+  margin: 0;
+  font-size: var(--fs-sm);
+
+  dt {
+    font-size: var(--fs-xs);
+    color: var(--color-text-subtle);
+  }
+
+  dd {
+    font-weight: 650;
+  }
+}
+
+.slot__expiry {
+  color: var(--laterite-700);
+  font-weight: 700;
+}
+
+.slot__note {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.slot__action {
+  justify-self: start;
+  min-height: 2.75rem;
+}
+
+.slot__form {
+  display: grid;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--color-border);
+  animation: rise-in var(--dur-3) var(--ease-out);
+}
+
+.slot__form-actions {
+  align-items: center;
+  margin-top: 0;
+}
+
+.slot__stage {
+  margin-right: auto;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}

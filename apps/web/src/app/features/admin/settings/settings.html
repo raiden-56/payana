@@ -1,0 +1,382 @@
+<header class="page-head">
+  <span class="eyebrow">Configuration</span>
+  <h1>Settings</h1>
+  <p>Google accounts, feature switches, support contacts and the booking fee. Changes are recorded in the audit log.</p>
+</header>
+
+@switch (settings.status()) {
+  @case ('error') {
+    <app-state-panel [error]="settings.error()" (retry)="settings.load()" />
+  }
+  @case ('ready') {
+    @if (!canEdit) {
+      <p class="notice"><app-icon name="lock" [size]="18" /> <span>You can view these settings. Changing them needs the <strong>super admin</strong> role.</span></p>
+    }
+
+    <form [formGroup]="form" (submit)="$event.preventDefault(); save()" novalidate>
+      <!-- ================= Google Analytics & Ads ================= -->
+      <section class="panel block" formGroupName="analytics" aria-labelledby="s-analytics">
+        <header class="panel__head">
+          <div>
+            <h2 id="s-analytics">Analytics &amp; Ads</h2>
+            <p class="subtle">Paste the IDs from your Google accounts. An empty field keeps that integration off — no Google script is loaded and nothing is sent.</p>
+          </div>
+        </header>
+
+        <div class="panel__body stack" style="--stack-gap: 1.75rem">
+          <!-- live status -->
+          <div class="status-grid" aria-label="Current status in this browser">
+            <div class="status-card">
+              <span class="status-card__name">Google Analytics</span>
+              <span class="badge" [class]="'badge badge--' + status().ga4.tone">{{ status().ga4.label }}</span>
+              <p>{{ status().ga4.detail }}</p>
+            </div>
+            <div class="status-card">
+              <span class="status-card__name">Google Ads</span>
+              <span class="badge" [class]="'badge badge--' + status().googleAds.tone">{{ status().googleAds.label }}</span>
+              <p>{{ status().googleAds.detail }}</p>
+            </div>
+            <div class="status-card">
+              <span class="status-card__name">AdSense</span>
+              <span class="badge" [class]="'badge badge--' + status().adsense.tone">{{ status().adsense.label }}</span>
+              <p>{{ status().adsense.detail }}</p>
+            </div>
+          </div>
+          <div class="cluster">
+            <button type="button" class="btn btn--outline btn--sm" (click)="consent.preferencesOpen.set(true)">
+              <app-icon name="sliders" [size]="15" /> My own privacy choice
+            </button>
+            <button type="button" class="btn btn--outline btn--sm" [disabled]="analytics.status().ga4 !== 'active'" (click)="sendTestEvent()">
+              <app-icon name="send" [size]="15" /> Send a test event
+            </button>
+            <span class="subtle">The status above describes this browser. Save first, then accept analytics in the privacy banner to test.</span>
+          </div>
+
+          <!-- GA4 -->
+          <fieldset class="group">
+            <legend>Google Analytics 4</legend>
+            <div class="field">
+              <label class="field__label" for="ga4">Measurement ID</label>
+              <input
+                id="ga4"
+                class="input mono"
+                formControlName="ga4MeasurementId"
+                placeholder="G-XXXXXXXXXX"
+                autocomplete="off"
+                spellcheck="false"
+                [attr.aria-invalid]="invalid(form.controls.analytics.controls.ga4MeasurementId)"
+                aria-describedby="ga4-help"
+                (blur)="tidy(form.controls.analytics.controls.ga4MeasurementId, true)"
+              />
+              @if (invalid(form.controls.analytics.controls.ga4MeasurementId)) {
+                <p class="field__error" id="ga4-help"><app-icon name="alert-circle" [size]="14" /> It should look like G-AB12CD34EF. Leave empty to keep analytics off.</p>
+              } @else {
+                <p class="field__hint" id="ga4-help">Starts with “G-”.</p>
+              }
+            </div>
+            <details class="howto">
+              <summary>Where do I find this?</summary>
+              <ol>
+                <li>Open <strong>analytics.google.com</strong> and choose (or create) the property for this site.</li>
+                <li>Go to <strong>Admin → Data collection and modification → Data streams</strong>.</li>
+                <li>Open the <strong>Web</strong> stream for your domain (add one if there is none).</li>
+                <li>Copy the <strong>Measurement ID</strong> at the top right and paste it here.</li>
+              </ol>
+              <p>Page views are sent automatically on every screen. Events sent: search, view_driver, view_package, begin_ride_request, ride_requested, quote_accepted, booking_cancelled, review_submitted, login, sign_up, subscription_checkout, ad_impression, ad_click. No names, phone numbers or e-mail addresses are ever included.</p>
+            </details>
+          </fieldset>
+
+          <!-- Google Ads -->
+          <fieldset class="group">
+            <legend>Google Ads conversion tracking</legend>
+            <div class="field">
+              <label class="field__label" for="aw">Google tag ID</label>
+              <input
+                id="aw"
+                class="input mono"
+                formControlName="googleAdsId"
+                placeholder="AW-1234567890"
+                autocomplete="off"
+                spellcheck="false"
+                [attr.aria-invalid]="invalid(form.controls.analytics.controls.googleAdsId)"
+                aria-describedby="aw-help"
+                (blur)="tidy(form.controls.analytics.controls.googleAdsId, true)"
+              />
+              @if (invalid(form.controls.analytics.controls.googleAdsId)) {
+                <p class="field__error" id="aw-help"><app-icon name="alert-circle" [size]="14" /> It should look like AW-1234567890. Leave empty to keep Ads tracking off.</p>
+              } @else {
+                <p class="field__hint" id="aw-help">Starts with “AW-”. One per Google Ads account.</p>
+              }
+            </div>
+
+            <div class="rows" formGroupName="labels">
+              <p class="rows__title">Conversion labels <span class="field__optional">— one per conversion action, each optional</span></p>
+              @for (c of conversions; track c.event) {
+                <div class="row">
+                  <label class="row__text" [for]="'label-' + c.event">
+                    <strong>{{ c.title }}</strong>
+                    <span>{{ c.when }}</span>
+                  </label>
+                  <div class="field">
+                    <input
+                      class="input mono"
+                      [id]="'label-' + c.event"
+                      [formControlName]="c.event"
+                      placeholder="e.g. AbC-D_efG-h12_34-567"
+                      autocomplete="off"
+                      spellcheck="false"
+                      [attr.aria-invalid]="invalid(form.controls.analytics.controls.labels.controls[c.event])"
+                      (blur)="tidy(form.controls.analytics.controls.labels.controls[c.event])"
+                    />
+                    @if (invalid(form.controls.analytics.controls.labels.controls[c.event])) {
+                      <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Paste only the part after the slash.</p>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+            @if (labelsWithoutTag()) {
+              <p class="notice notice--warning"><app-icon name="alert" [size]="18" /> <span>These labels do nothing until a Google tag ID is entered above.</span></p>
+            }
+            <details class="howto">
+              <summary>Where do I find the tag ID and the labels?</summary>
+              <ol>
+                <li>In <strong>ads.google.com</strong> go to <strong>Goals → Conversions → Summary</strong> and create a conversion action of type <strong>Website</strong> for each row above you want to track (choose “Add a conversion action manually”).</li>
+                <li>Open the action, choose <strong>Tag setup → Install the tag yourself</strong>.</li>
+                <li>In the <strong>event snippet</strong> you will see a line like <code>'send_to': 'AW-1234567890/AbC-D_efG-h12'</code>.</li>
+                <li>The part <strong>before</strong> the slash is the tag ID (same for all actions). The part <strong>after</strong> the slash is that action’s label.</li>
+              </ol>
+              <p>You do not need to paste any snippet into the site — these two values are all it takes.</p>
+            </details>
+          </fieldset>
+
+          <!-- AdSense -->
+          <fieldset class="group">
+            <legend>Google AdSense <span class="field__optional">(display ads — optional)</span></legend>
+            <p class="subtle">Local business adverts from Admin → Adverts always take priority. An AdSense unit appears in a position only when no local campaign is running there.</p>
+            <div class="field">
+              <label class="field__label" for="adsense">Publisher ID</label>
+              <input
+                id="adsense"
+                class="input mono"
+                formControlName="adsensePublisherId"
+                placeholder="ca-pub-1234567890123456"
+                autocomplete="off"
+                spellcheck="false"
+                [attr.aria-invalid]="invalid(form.controls.analytics.controls.adsensePublisherId)"
+                (blur)="tidy(form.controls.analytics.controls.adsensePublisherId)"
+              />
+              @if (invalid(form.controls.analytics.controls.adsensePublisherId)) {
+                <p class="field__error"><app-icon name="alert-circle" [size]="14" /> It should look like ca-pub-1234567890123456.</p>
+              }
+            </div>
+            <div class="rows" formGroupName="slots">
+              <p class="rows__title">Ad unit (slot) IDs <span class="field__optional">— one per position, each optional</span></p>
+              @for (p of placements; track p.placement) {
+                <div class="row">
+                  <label class="row__text" [for]="'slot-' + p.placement">
+                    <strong>{{ p.title }}</strong>
+                    <span>{{ p.where }}</span>
+                  </label>
+                  <div class="field">
+                    <input
+                      class="input mono"
+                      [id]="'slot-' + p.placement"
+                      [formControlName]="p.placement"
+                      placeholder="1234567890"
+                      inputmode="numeric"
+                      autocomplete="off"
+                      [attr.aria-invalid]="invalid(form.controls.analytics.controls.slots.controls[p.placement])"
+                      (blur)="tidy(form.controls.analytics.controls.slots.controls[p.placement])"
+                    />
+                    @if (invalid(form.controls.analytics.controls.slots.controls[p.placement])) {
+                      <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Digits only — the “data-ad-slot” number.</p>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+            @if (slotsWithoutPublisher()) {
+              <p class="notice notice--warning"><app-icon name="alert" [size]="18" /> <span>Slot IDs do nothing until a publisher ID is entered above.</span></p>
+            }
+            <details class="howto">
+              <summary>What else does AdSense need?</summary>
+              <ol>
+                <li>Your site must be approved in <strong>adsense.google.com → Sites</strong>.</li>
+                <li>Create a <strong>Display ad</strong> unit for each position (Ads → By ad unit) and copy its <code>data-ad-slot</code> number here.</li>
+                <li>Add your seller line to <code>ads.txt</code> on the web server — the file is already there with instructions inside (<code>apps/web/public/ads.txt</code>).</li>
+              </ol>
+            </details>
+          </fieldset>
+
+          <!-- consent -->
+          <fieldset class="group">
+            <legend>Consent</legend>
+            <label class="switch-row">
+              <span>
+                <strong>Ask visitors before measuring</strong>
+                <span>Nothing above loads until a visitor accepts in the privacy banner. Google Consent Mode v2 signals are sent with their choice.</span>
+              </span>
+              <span class="switch"><input type="checkbox" role="switch" formControlName="requireConsent" /><span></span></span>
+            </label>
+            @if (consentOff()) {
+              <p class="notice notice--danger" role="alert">
+                <app-icon name="alert" [size]="18" />
+                <span><strong>With this off, every visitor is tracked without being asked.</strong> That is unlikely to be lawful under India’s DPDP Act or for visitors from the EU/UK, and Google’s own policies require consent for those users. Take legal advice before saving this.</span>
+              </p>
+            }
+            <label class="switch-row">
+              <span>
+                <strong>Debug mode</strong>
+                <span>Marks events for GA4 DebugView and logs them in the browser console. Keep off in normal operation.</span>
+              </span>
+              <span class="switch"><input type="checkbox" role="switch" formControlName="debugMode" /><span></span></span>
+            </label>
+          </fieldset>
+        </div>
+      </section>
+
+      <!-- ================= Feature switches ================= -->
+      <section class="panel block" formGroupName="features" aria-labelledby="s-features">
+        <header class="panel__head">
+          <div>
+            <h2 id="s-features">Features</h2>
+            <p class="subtle">Switch a part of the product on or off for everyone. The API refuses requests for a feature that is off.</p>
+          </div>
+        </header>
+        <div class="panel__body">
+          @for (f of flags; track f.flag) {
+            <label class="switch-row">
+              <span>
+                <strong>{{ f.title }}</strong>
+                <span>{{ f.detail }}</span>
+              </span>
+              <span class="switch"><input type="checkbox" role="switch" [formControlName]="f.flag" /><span></span></span>
+            </label>
+          }
+        </div>
+      </section>
+
+      <!-- ================= Support & region ================= -->
+      <section class="panel block" aria-labelledby="s-support">
+        <header class="panel__head">
+          <div>
+            <h2 id="s-support">Support contact &amp; default town</h2>
+            <p class="subtle">Shown in the site footer and on the help page. Empty fields are simply not shown.</p>
+          </div>
+        </header>
+        <div class="panel__body form-grid" formGroupName="support">
+          <div class="field">
+            <label class="field__label" for="sup-phone">Phone</label>
+            <input id="sup-phone" class="input" formControlName="phone" placeholder="+919876543210" inputmode="tel" [attr.aria-invalid]="invalid(form.controls.support.controls.phone)" (blur)="tidy(form.controls.support.controls.phone)" />
+            @if (invalid(form.controls.support.controls.phone)) {
+              <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Use the form +91 followed by 10 digits.</p>
+            }
+          </div>
+          <div class="field">
+            <label class="field__label" for="sup-wa">WhatsApp</label>
+            <input id="sup-wa" class="input" formControlName="whatsapp" placeholder="+919876543210" inputmode="tel" [attr.aria-invalid]="invalid(form.controls.support.controls.whatsapp)" (blur)="tidy(form.controls.support.controls.whatsapp)" />
+            @if (invalid(form.controls.support.controls.whatsapp)) {
+              <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Use the form +91 followed by 10 digits.</p>
+            }
+          </div>
+          <div class="field">
+            <label class="field__label" for="sup-email">E-mail</label>
+            <input id="sup-email" class="input" type="email" formControlName="email" placeholder="help@example.in" [attr.aria-invalid]="invalid(form.controls.support.controls.email)" />
+            @if (invalid(form.controls.support.controls.email)) {
+              <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Enter a valid e-mail address.</p>
+            }
+          </div>
+        </div>
+        <div class="panel__body form-grid tight-top">
+          <div class="field">
+            <label class="field__label" for="region">Default town</label>
+            <select id="region" class="select" [formControl]="form.controls.defaultRegionSlug">
+              @for (r of regions(); track r.id) {
+                <option [value]="r.slug">{{ r.name }}</option>
+              }
+            </select>
+            <p class="field__hint">Shown first to a visitor who has not shared a location.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= Booking fee ================= -->
+      <section class="panel block" formGroupName="bookingFee" aria-labelledby="s-fee">
+        <header class="panel__head">
+          <div>
+            <h2 id="s-fee">Booking fee</h2>
+            <p class="subtle">A platform fee added when a customer accepts a quote. The fare itself always goes to the driver.</p>
+          </div>
+        </header>
+        <div class="panel__body stack">
+          <label class="switch-row">
+            <span>
+              <strong>Charge a booking fee</strong>
+              <span>Applies to bookings made after you save. Existing bookings keep the fee they were made with.</span>
+            </span>
+            <span class="switch"><input type="checkbox" role="switch" formControlName="enabled" /><span></span></span>
+          </label>
+          <div class="form-grid fee-grid">
+            <div class="field">
+              <label class="field__label" for="fee-flat">Flat amount</label>
+              <div class="input-group"><span class="input-group__addon" aria-hidden="true">₹</span><input id="fee-flat" class="input" type="number" min="0" step="1" formControlName="flatRupees" [attr.aria-invalid]="invalid(form.controls.bookingFee.controls.flatRupees)" /></div>
+            </div>
+            <div class="field">
+              <label class="field__label" for="fee-pct">Plus % of the fare</label>
+              <div class="input-group"><span class="input-group__addon" aria-hidden="true">%</span><input id="fee-pct" class="input" type="number" min="0" max="20" step="0.5" formControlName="percent" [attr.aria-invalid]="invalid(form.controls.bookingFee.controls.percent)" /></div>
+              @if (invalid(form.controls.bookingFee.controls.percent)) {
+                <p class="field__error"><app-icon name="alert-circle" [size]="14" /> Between 0 and 20.</p>
+              }
+            </div>
+            <div class="field">
+              <label class="field__label" for="fee-cap">Never more than <span class="field__optional">(optional)</span></label>
+              <div class="input-group"><span class="input-group__addon" aria-hidden="true">₹</span><input id="fee-cap" class="input" type="number" min="0" step="1" formControlName="capRupees" /></div>
+            </div>
+          </div>
+          <p class="notice"><app-icon name="info" [size]="18" /> <span>{{ feePreview() }}</span></p>
+          <p class="notice notice--warning">
+            <app-icon name="alert" [size]="18" />
+            <span>No online payment gateway is connected yet, so a fee is recorded on the booking but not collected. Keep this off until payments are set up.</span>
+          </p>
+        </div>
+      </section>
+
+      @if (saveError(); as e) {
+        <div class="notice notice--danger" role="alert">
+          <app-icon name="alert-circle" [size]="18" />
+          <div>
+            <strong>{{ e.message }}</strong>
+            @if (e.fieldErrors.length) {
+              <ul class="errors">
+                @for (fe of e.fieldErrors; track fe.field) {
+                  <li><code>{{ fe.field }}</code> — {{ fe.message }}</li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+      }
+
+      @if (canEdit) {
+        <div class="savebar" [class.is-dirty]="form.dirty">
+          <span class="savebar__state">
+            @if (form.dirty) {
+              <span class="dot" style="color: var(--marigold-500)"></span> Unsaved changes
+            } @else {
+              <app-icon name="check" [size]="16" /> Everything is saved
+            }
+          </span>
+          <button type="button" class="btn btn--ghost" [disabled]="!form.dirty || saving()" (click)="discard()">Discard</button>
+          <button type="submit" class="btn btn--accent" [class.is-loading]="saving()" [disabled]="!form.dirty || saving()">Save settings</button>
+        </div>
+      }
+    </form>
+  }
+  @default {
+    <div class="stack" aria-hidden="true">
+      <span class="skeleton" style="height: 22rem; border-radius: var(--r-md)"></span>
+      <span class="skeleton" style="height: 12rem; border-radius: var(--r-md)"></span>
+    </div>
+  }
+}

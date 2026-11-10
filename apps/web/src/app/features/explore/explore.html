@@ -1,0 +1,149 @@
+<section class="page">
+  <div class="container">
+    <header class="page-head">
+      <span class="eyebrow">Find a ride</span>
+      <h1>Verified drivers, near you.</h1>
+      <p>Pick a pickup point to see who is closest, or browse everyone serving {{ regionName() }}.</p>
+    </header>
+
+    <!-- ===== Filters ===== -->
+    <form class="filters card card--poster" (submit)="$event.preventDefault()" aria-label="Search filters">
+      <app-location-picker
+        class="filters__where"
+        label="Pickup point"
+        placeholder="Beach, bus stand, your stay…"
+        hint="Leave empty to browse the whole area."
+        [value]="pickup()"
+        (valueChange)="setPickup($event)"
+      />
+
+      <div class="field filters__sort">
+        <label class="field__label" for="sort">Sort by</label>
+        <select id="sort" class="select" [value]="sort()" (change)="setSort($any($event.target).value)">
+          @for (s of sorts; track s.value) {
+            <option [value]="s.value" [disabled]="s.needsPoint && !pickup()">{{ s.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="field filters__seats">
+        <label class="field__label" for="seats">Seats</label>
+        <select id="seats" class="select" [value]="minSeats()" (change)="setSeats($any($event.target).value)">
+          @for (n of seatOptions; track n) {
+            <option [value]="n">{{ n ? n + ' or more' : 'Any' }}</option>
+          }
+        </select>
+      </div>
+
+      @if (pickup()) {
+        <div class="field filters__radius">
+          <label class="field__label" for="radius">Within <strong class="tabular">{{ radiusShown() }} km</strong></label>
+          <input
+            id="radius"
+            class="range"
+            type="range"
+            min="1"
+            [max]="maxRadius"
+            step="1"
+            [value]="radiusShown()"
+            [style.--fill]="(radiusShown() / maxRadius) * 100 + '%'"
+            (input)="radiusDraft.set(+$any($event.target).value)"
+            (change)="commitRadius()"
+          />
+        </div>
+      }
+
+      <label class="switch filters__avail">
+        <input type="checkbox" role="switch" [checked]="availableNow()" (change)="setAvailable($any($event.target).checked)" />
+        <span></span> Available now
+      </label>
+
+      <div class="filters__cats" role="group" aria-label="Vehicle type">
+        <button type="button" class="chip" [attr.aria-pressed]="!category()" (click)="setCategory('')">All vehicles</button>
+        @for (c of categories.data() ?? []; track c.id) {
+          <button type="button" class="chip chip--art" [attr.aria-pressed]="category() === c.code" (click)="setCategory(c.code)">
+            <app-vehicle-art [icon]="c.icon" /> {{ c.name }}
+          </button>
+        }
+      </div>
+    </form>
+
+    <!-- ===== Results ===== -->
+    <div class="results">
+      <div class="results__main">
+        <div class="results__bar">
+          <p class="results__count" role="status" aria-live="polite">
+            @if (results.status() === 'ready') {
+              {{ summary() }}
+            } @else if (results.loading()) {
+              Looking for drivers…
+            }
+          </p>
+          @if (hasFilters()) {
+            <button type="button" class="btn btn--ghost btn--sm" (click)="clearFilters()">
+              <app-icon name="close" [size]="15" /> Clear filters
+            </button>
+          }
+        </div>
+
+        @if (closest().length) {
+          <ul class="closest" aria-label="Closest drivers">
+            @for (d of closest(); track d.driverId) {
+              <li>
+                <button type="button" class="closest__item glass" (click)="focusDriver(d.driverId)">
+                  <app-vehicle-art [icon]="d.vehicle.icon" />
+                  <span>
+                    <strong>{{ d.displayName }}</strong>
+                    <small>{{ d.location.distanceKm | distance }} away · {{ d.vehicle.categoryName }}</small>
+                  </span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+
+        @switch (results.status()) {
+          @case ('error') {
+            <app-state-panel [error]="results.error()" (retry)="results.load()" />
+          }
+          @case ('ready') {
+            @if (drivers().length) {
+              <ul class="grid cards" [class.is-refreshing]="results.refreshing()">
+                @for (driver of drivers(); track driver.driverId; let i = $index) {
+                  <li [id]="'driver-' + driver.driverId" appReveal [revealDelay]="(i % 6) * 60">
+                    <app-driver-card [driver]="driver" [highlighted]="activeId() === driver.driverId" />
+                  </li>
+                  @if (i === 3) {
+                    <li class="cards__ad"><app-ad-slot [placement]="adPlacement" [regionSlug]="region()" /></li>
+                  }
+                }
+              </ul>
+              <app-pager [page]="page()" [pageSize]="pageSize" [total]="total()" (pageChange)="goToPage($event)" />
+            } @else {
+              <app-state-panel
+                kind="empty"
+                title="No drivers match that search"
+                [message]="pickup() ? 'Nobody is listed within ' + radiusKm() + ' km with these filters. Widen the search or loosen a filter.' : 'Nobody matches these filters right now. Try loosening one.'"
+              >
+                @if (pickup() && radiusKm() < maxRadius) {
+                  <button type="button" class="btn btn--dark btn--sm" (click)="widenRadius()">Search a wider area</button>
+                }
+                @if (hasFilters()) {
+                  <button type="button" class="btn btn--outline btn--sm" (click)="clearFilters()">Clear filters</button>
+                }
+              </app-state-panel>
+            }
+          }
+          @default {
+            <ul class="grid cards" aria-hidden="true">
+              @for (n of [1, 2, 3, 4, 5, 6]; track n) {
+                <li><span class="skeleton" style="height: 25rem; border-radius: var(--r-lg)"></span></li>
+              }
+            </ul>
+          }
+        }
+      </div>
+
+    </div>
+  </div>
+</section>

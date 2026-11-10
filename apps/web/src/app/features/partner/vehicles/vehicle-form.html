@@ -1,0 +1,185 @@
+<form class="vf" (submit)="$event.preventDefault(); save()" novalidate>
+  <fieldset class="vf__group">
+    <legend>The vehicle</legend>
+
+    <div class="vf__top">
+      <div class="vf__art" aria-hidden="true">
+        <app-vehicle-art [icon]="selectedCategory()?.icon ?? 'sedan'" />
+      </div>
+      <div class="field vf__category">
+        <label class="field__label" for="vf-category">Kind of vehicle</label>
+        @switch (store.categories.status()) {
+          @case ('error') {
+            <p class="notice notice--danger" role="alert">
+              <app-icon name="alert-circle" [size]="18" />
+              <span>Vehicle types could not be loaded. <button type="button" class="link" (click)="store.categories.load()">Try again</button></span>
+            </p>
+          }
+          @case ('ready') {
+            <select
+              id="vf-category"
+              class="select"
+              [formControl]="form.controls.categoryCode"
+              [attr.aria-invalid]="errors.invalid('categoryCode')"
+              aria-describedby="vf-category-help"
+            >
+              <option value="" disabled>Choose…</option>
+              @for (category of categories(); track category.id) {
+                <option [value]="category.code">{{ category.name }} · {{ category.seats }} seats</option>
+              }
+            </select>
+          }
+          @default {
+            <span class="skeleton" style="height: 2.9rem"></span>
+          }
+        }
+        @if (errors.message('categoryCode'); as message) {
+          <p class="field__error" id="vf-category-help"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        } @else {
+          <p class="field__hint" id="vf-category-help">{{ selectedCategory()?.description || 'This decides which searches the vehicle appears in.' }}</p>
+        }
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label class="field__label" for="vf-make">Make</label>
+        <input id="vf-make" class="input" type="text" maxlength="40" placeholder="Bajaj" [formControl]="form.controls.make" [attr.aria-invalid]="errors.invalid('make')" aria-describedby="vf-make-err" />
+        @if (errors.message('make'); as message) {
+          <p class="field__error" id="vf-make-err"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        }
+      </div>
+      <div class="field">
+        <label class="field__label" for="vf-model">Model</label>
+        <input id="vf-model" class="input" type="text" maxlength="40" placeholder="RE Compact" [formControl]="form.controls.model" [attr.aria-invalid]="errors.invalid('model')" aria-describedby="vf-model-err" />
+        @if (errors.message('model'); as message) {
+          <p class="field__error" id="vf-model-err"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="vf-reg">Registration number</label>
+        <input
+          id="vf-reg"
+          class="input vf__plate"
+          type="text"
+          autocapitalize="characters"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="16"
+          placeholder="KA 47 A 4821"
+          [formControl]="form.controls.registrationNumber"
+          [attr.aria-invalid]="errors.invalid('registrationNumber')"
+          aria-describedby="vf-reg-help"
+          (blur)="onRegistrationBlur()"
+        />
+        @if (errors.message('registrationNumber'); as message) {
+          <p class="field__error" id="vf-reg-help"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        } @else {
+          <p class="field__hint" id="vf-reg-help">Exactly as on the RC. Customers see the full number only inside a booking.</p>
+        }
+      </div>
+      <div class="field">
+        <label class="field__label" for="vf-year">Year <span class="field__optional">(optional)</span></label>
+        <input id="vf-year" class="input" type="number" inputmode="numeric" min="1990" [attr.max]="maxYear" placeholder="2021" [formControl]="form.controls.year" [attr.aria-invalid]="errors.invalid('year')" aria-describedby="vf-year-err" />
+        @if (errors.message('year'); as message) {
+          <p class="field__error" id="vf-year-err"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="vf-seats">Passenger seats</label>
+        <input id="vf-seats" class="input" type="number" inputmode="numeric" min="1" max="60" [formControl]="form.controls.seats" [attr.aria-invalid]="errors.invalid('seats')" aria-describedby="vf-seats-help" />
+        @if (errors.message('seats'); as message) {
+          <p class="field__error" id="vf-seats-help"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        } @else {
+          <p class="field__hint" id="vf-seats-help">Not counting the driver.</p>
+        }
+      </div>
+      <div class="field">
+        <label class="field__label" for="vf-bags">Bags it can carry</label>
+        <input id="vf-bags" class="input" type="number" inputmode="numeric" min="0" max="60" [formControl]="form.controls.luggageCapacity" [attr.aria-invalid]="errors.invalid('luggageCapacity')" aria-describedby="vf-bags-help" />
+        @if (errors.message('luggageCapacity'); as message) {
+          <p class="field__error" id="vf-bags-help"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+        } @else {
+          <p class="field__hint" id="vf-bags-help">Standard cabin-size bags.</p>
+        }
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="vf-color">Colour <span class="field__optional">(optional)</span></label>
+        <input id="vf-color" class="input" type="text" maxlength="30" placeholder="White" [formControl]="form.controls.color" />
+        <p class="field__hint">Helps customers spot you at pickup.</p>
+      </div>
+      <div class="field vf__ac">
+        <span class="field__label">Comfort</span>
+        <label class="switch">
+          <input type="checkbox" role="switch" [formControl]="form.controls.hasAc" />
+          <span></span>
+          Air conditioned
+        </label>
+      </div>
+    </div>
+  </fieldset>
+
+  @if (identityChanges()) {
+    <p class="notice notice--warning" role="status">
+      <app-icon name="alert" [size]="18" />
+      <span>
+        <strong>This sends the vehicle back for review.</strong> Changing the registration number or the kind of vehicle means its documents
+        no longer match: it is taken out of search, its rates are cleared, and you will need to upload its documents again.
+      </span>
+    </p>
+  }
+
+  <fieldset class="vf__group">
+    <legend>Photos <span class="field__optional">(optional)</span></legend>
+    @if (isEdit() && vehicle()!.photoUrls.length && !photos().length) {
+      <ul class="thumbs" aria-label="Current photos">
+        @for (url of vehicle()!.photoUrls; track url) {
+          <li><img [src]="url" alt="Current photo of the vehicle" loading="lazy" /></li>
+        }
+      </ul>
+    }
+    @if (previews().length) {
+      <ul class="thumbs" aria-label="Photos to upload">
+        @for (url of previews(); track url) {
+          <li><img [src]="url" alt="Photo chosen for upload" /></li>
+        }
+      </ul>
+    }
+    <app-file-pick
+      [label]="isEdit() && vehicle()!.photoUrls.length ? 'Choose new photos' : 'Add photos of the vehicle'"
+      [types]="photoTypes"
+      [multiple]="true"
+      [maxFiles]="maxPhotos"
+      (picked)="onPhotos($event)"
+    />
+    @if (errors.message('photos'); as message) {
+      <p class="field__error" role="alert"><app-icon name="alert-circle" [size]="14" /> {{ message }}</p>
+    } @else if (isEdit() && vehicle()!.photoUrls.length) {
+      <p class="field__hint">New photos replace the current ones. Leave this empty to keep them.</p>
+    } @else {
+      <p class="field__hint">Outside, from the front and the side, in daylight. Listings with photos get more requests.</p>
+    }
+  </fieldset>
+
+  @if (problem()) {
+    <p class="notice notice--danger" role="alert">
+      <app-icon name="alert-circle" [size]="18" />
+      <span>
+        {{ problem() }}
+        @if (planLimit()) {
+          <a class="link" routerLink="/partner/plan">See plans</a>
+        }
+      </span>
+    </p>
+  }
+
+  <div class="form-actions">
+    @if (cancellable()) {
+      <button type="button" class="btn btn--ghost" [disabled]="busy()" (click)="cancelled.emit()">Cancel</button>
+    }
+    <button type="submit" class="btn btn--accent" [class.is-loading]="busy()" [disabled]="busy()">{{ label() }}</button>
+  </div>
+</form>

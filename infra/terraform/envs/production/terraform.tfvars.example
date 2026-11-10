@@ -1,0 +1,42 @@
+# Copy to terraform.tfvars and fill in. This file holds NO secrets: database,
+# cache, token-signing and encryption secrets are generated and kept in AWS
+# Secrets Manager. (*.tfvars is git-ignored; only this example is tracked.)
+
+aws_region = "ap-south-1"
+
+# --- Required ---------------------------------------------------------------------
+
+# Host name CloudFront uses to reach the load balancer. After the first apply,
+# create a CNAME (or Route 53 alias) from it to the `alb_dns_name` output.
+api_origin_domain_name = "origin.example.in"
+
+# ACM certificate for api_origin_domain_name, issued in aws_region (ap-south-1).
+alb_certificate_arn = "arn:aws:acm:ap-south-1:111122223333:certificate/00000000-0000-0000-0000-000000000000"
+
+# Public host name(s) and their certificate. The certificate must be in us-east-1
+# (a CloudFront requirement).
+domain_names               = ["app.example.in"]
+cloudfront_certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/00000000-0000-0000-0000-000000000000"
+
+# Alarm notifications. The address must confirm the subscription email.
+alert_email = "ops@example.in"
+
+# Lets the GitHub deploy workflow assume a role in this account (no access keys).
+github_repository = "your-org/payana"
+# Set false if staging lives in the same AWS account and was applied first.
+# create_github_oidc_provider = false
+
+# --- Optional ---------------------------------------------------------------------
+
+# One-time codes are sent through a real SMS gateway ("provider", the default).
+# Its credentials go in the "payana-production/api-integrations" secret; list
+# their JSON keys here once the values are set.
+# integration_secret_keys = ["SMS_API_KEY"]
+
+# payment_provider = "manual"   # no money moves; switch when a gateway is integrated
+
+# Sizing defaults are in variables.tf (db.t4g.medium Multi-AZ, 2 cache nodes,
+# 2-6 API tasks of 0.5 vCPU / 1 GB). Override here as load requires, e.g.:
+# db_instance_class              = "db.m7g.large"
+# db_connections_alarm_threshold = 650
+# api_max_capacity               = 10
