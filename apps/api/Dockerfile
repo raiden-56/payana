@@ -14,7 +14,7 @@
 # comes from the environment (see apps/api/.env.example).
 
 # ---------------------------------------------------------------------------- build
-FROM --platform=linux/amd64 node:24-bookworm-slim AS build
+FROM --platform=linux/amd64 node:26-bookworm-slim AS build
 WORKDIR /repo
 
 # Shared contracts first: they change less often than the API, so this layer caches well.
@@ -33,7 +33,7 @@ RUN npm --prefix apps/api run build \
 ADD --chmod=0644 https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /tmp/rds-global-bundle.pem
 
 # -------------------------------------------------------------------------- runtime
-FROM --platform=linux/amd64 node:24-bookworm-slim AS runtime
+FROM --platform=linux/amd64 node:26-bookworm-slim AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
     NODE_EXTRA_CA_CERTS=/etc/ssl/certs/rds-global-bundle.pem
