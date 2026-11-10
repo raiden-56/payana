@@ -80,11 +80,11 @@ jobs:
       PRIVATE_SUBNET_IDS: ${{ vars.PRIVATE_SUBNET_IDS }}
       API_SECURITY_GROUP_ID: ${{ vars.API_SECURITY_GROUP_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -108,13 +108,13 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
         if: steps.image.outputs.exists == 'false'
 
       # Build context is the repository root: the API image needs packages/contracts.
       - name: Build and push the API image
         if: steps.image.outputs.exists == 'false'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: apps/api/Dockerfile
@@ -204,7 +204,7 @@ jobs:
       WEB_BUCKET: ${{ vars.WEB_BUCKET }}
       CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.sha }}
 
@@ -219,7 +219,7 @@ jobs:
           npm run build
           test -f dist/web/browser/index.html
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
